@@ -1,0 +1,105 @@
+# Fase 3.2 & 3.3 — Memory System
+# Short Memory: orchestrator context window (max 2000 tokens)
+# Long Memory: file-based CRM (/data/leads/{lead_id}.yaml)
+
+# ============================================================
+# SHORT MEMORY (orchestrator context)
+# ============================================================
+short_memory:
+  description: "Disimpan di context window orchestrator. MAX 2000 tokens. Hanya summary."
+  structure:
+    lead_id: string
+    lead_name: string
+    state: string               # current state
+    personality_type: string
+    bant_score: integer
+    tier: string                # hot | warm | cold
+    objective: string
+    fields_filled: integer
+    offer_shown: boolean
+    objection_count: integer
+    last_agent: string
+    last_artifact_id: string
+    last_response_summary: string  # MAX 1 kalimat
+    turn_count: integer
+    spam_score: integer
+
+# ============================================================
+# LONG MEMORY — CRM (file-based)
+# ============================================================
+# Format file: /data/leads/{lead_id}.yaml
+long_memory_format:
+  lead_id: string               # UUID
+  phone: string | null          # nomor WA/telepon
+  created_at: string            # ISO 8601, first contact
+  updated_at: string            # ISO 8601, last update
+  
+  profile:
+    nama: string | null
+    lokasi: string | null
+    bisnis: string | null
+    masalah: string | null
+    goal: string | null
+    budget: string | null
+    timeline: string | null
+    decision_maker: string | null
+  
+  personality:
+    type: string | null         # analytical | driver | amiable | expressive
+    confidence: float
+  
+  qualification:
+    bant_score: integer
+    tier: string                # hot | warm | cold
+    qualified: boolean
+  
+  conversation_history:
+    total_conversations: integer
+    last_state: string
+    last_contact: string        # ISO 8601
+    summary: string             # ringkasan semua conversation (max 500 chars)
+  
+  lifecycle:
+    lead_source: string         # organic | ads | referral | unknown
+    status: string              # active | cold | converted | blacklisted
+    follow_up_stage: integer    # 0 = tidak dalam follow up, 1-4
+    next_follow_up: string | null  # ISO 8601
+
+  conversion:
+    won: boolean
+    conversion_date: string | null
+    conversion_type: string | null  # meeting_booked | checkout | form_submitted | store_visit | document_sent
+    revenue: integer | null
+
+  interactions:
+    meetings: array             # [{date, type, notes}]
+    complaints: array           # [{date, issue, resolution}]
+    purchases: array            # [{date, product, amount}]
+    notes: array                # [{date, note, agent}]
+
+  metadata:
+    spam_score: integer
+    escalation_count: integer
+    last_agent: string
+    artifact_chain_ids: array   # semua artifact_id untuk traceability
+
+# ============================================================
+# LONG MEMORY ACCESS RULES
+# ============================================================
+long_memory_rules:
+  read:
+    - "Dibaca OLEH subagent (Discovery/Router), BUKAN orchestrator"
+    - "Subagent baca file /data/leads/{lead_id}.yaml"
+    - "Subagent return RINGKASAN ke orchestrator via artifact"
+    - "Orchestrator hanya terima: is_returning_lead, previous_state, returning_summary"
+  
+  write:
+    - "Ditulis OLEH orchestrator setelah conversation selesai"
+    - "Update field: last_state, last_contact, summary, follow_up_stage"
+    - "Update conversion fields jika conversion terjadi"
+    - "Update artifact_chain_ids"
+  
+  create:
+    - "File baru dibuat saat lead pertama kali masuk"
+    - "lead_id di-generate oleh Router Agent"
+    - "Minimal field: lead_id, created_at, status=active"

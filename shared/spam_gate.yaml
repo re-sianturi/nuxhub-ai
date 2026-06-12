@@ -1,0 +1,74 @@
+# Fase 1.1 — Spam Gate
+# Pre-processing gate, dijalankan SEBELUM Router.
+# Scoring tidak agresif — toleransi untuk orang tua, gaptek, typo, bahasa campur.
+
+spam_scoring:
+
+  # Level 0: Bersih (score 0)
+  # Percakapan normal, tidak ada indikasi spam
+
+  # Level 1: Off-topic ringan (+10)
+  # Arahkan kembali, jangan block
+  light_off_topic:
+    score: 10
+    description: "Off-topic ringan"
+    examples:
+      - "Halo cantik, kamu siapa?"
+      - "Lagi ngapain?"
+      - "Hai"
+    action: "Arahkan kembali ke objective"
+    tolerance: "3x baru naik level"
+
+  # Level 2: Toxic/Penghinaan (+20)
+  # Peringatan, jangan langsung block
+  toxic:
+    score: 20
+    description: "Toxic atau tidak sopan"
+    keywords:
+      - "bodoh|goblok|tolol|bego|anjing|bangsat|kontol|memek|jancok"
+      - "penipu|scam|nipu|bohong|penjahat"
+    action: "Beri peringatan. 2x → escalate ke human"
+    tolerance: "2x baru escalate"
+
+  # Level 3: Scam pattern (+50)
+  # Scam jelas, tapi verifikasi dulu
+  scam:
+    score: 50
+    description: "Pola scam atau penipuan"
+    patterns:
+      - "Transfer|rekening|pinjaman|bunga rendah|menang undian|hadiah"
+      - "BUTUH CEPAT|SEGERA|JANGAN SAMPAI KETINGGALAN"  # ALL CAPS urgency
+      - "Klik link|buka website|download app"  # suspicious link pattern
+    action: "Verifikasi dulu — bisa jadi orang tua/gaptek. Kalau confirmed scam → +50 lagi → blacklist"
+
+  # Level 4: Blacklist (+100) — terminal
+  blacklist:
+    score: 100
+    description: "Confirmed spam/scam setelah verifikasi"
+    action: "BLACKLIST — tidak kirim response apapun"
+
+  # ============================================================
+  # EXCEPTIONS (jangan kena false positive)
+  # ============================================================
+  exceptions:
+    - condition: "Pesan pendek (1-3 kata) dari lead baru"
+      reason: "User baru sering coba-coba — jangan dianggap spam"
+    - condition: "Typo atau bahasa campur (Indo+Inggris+daerah)"
+      reason: "Gaptek atau orang tua — bukan spam"
+    - condition: "Pesan dengan angka (nomer HP, rekening)"
+      reason: "Bisa jadi share kontak bisnis — verifikasi konteks dulu"
+    - condition: "Pesan marah/emosional tentang produk"
+      reason: "Bisa jadi komplain genuine — escalate, jangan spam"
+
+  # ============================================================
+  # SCORING ALGORITHM
+  # ============================================================
+  algorithm:
+    steps:
+      - "1. Cek keyword toxic: +20 per match (max +40)"
+      - "2. Cek scam pattern: +50 per match (max +100)"
+      - "3. Cek off-topic: +10 jika tidak relate ke bisnis"
+      - "4. Cek exceptions: jika match exception → kurangi score 50%"
+      - "5. Cumulative: spam_score = akumulasi semua turn dalam conversation"
+    reset:
+      threshold_reset_turns: 10  # reset score setelah 10 turn normal

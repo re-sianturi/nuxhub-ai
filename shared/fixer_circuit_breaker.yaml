@@ -1,0 +1,100 @@
+# Fase 4.2 — Fixer Loop + Circuit Breaker
+# Fixer = producer agent yang sama, di-invoke ulang dengan mode:fix + error_report
+# Circuit Breaker = safety net untuk mencegah infinite loop
+
+fixer_loop:
+
+  description: "Retry mechanism untuk artifact yang gagal judge verification."
+  
+  mechanism:
+    step_1_judge_fail:
+      action: "Judge return pass=false + issues array"
+      flow: "Orchestrator terima issues → siapkan fix input"
+    
+    step_2_prepare_fix_input:
+      description: "Buat input untuk producer dengan mode fix"
+      fix_artifact:
+        mode: "fix"
+        original_artifact_id: string      # artifact yang gagal
+        expected_schema_ref: string
+        judge_issues: array               # dari judge output
+        error_summary: string             # ringkasan 1 kalimat dari semua issues
+        previous_output: object           # output producer sebelumnya
+        fix_instruction: string           # instruksi spesifik per issue
+    
+    step_3_retry_producer:
+      action: "Invoke producer agent yang SAMA dengan mode:fix"
+      delegate: "Gunakan delegate_task dengan input fix_artifact"
+      rules:
+        - "Producer TIDAK melihat judge prompt — hanya terima fix instructions"
+        - "Producer regenerate output dengan perbaikan"
+        - "Producer return artifact baru dengan parent_artifact_id = original_artifact_id"
+    
+    step_4_re_judge:
+      action: "Judge Agent verifikasi artifact hasil fix"
+      rules:
+        - "SAMA seperti verifikasi normal"
+        - "Judge TIDAK melihat artifact sebelumnya (isolasi tetap jalan)"
+    
+    step_5_resolution:
+      pass: "Artifact fix lulus → lanjut pipeline"
+      fail: "Increment retry_count → kembali ke step 2"
+      max_retries: 3
+      on_max_retries: "Circuit Breaker triggered → HUMAN_ESCALATION"
+
+  retry_strategy:
+    retry_1:
+      description: "Retry pertama — producer coba perbaiki berdasarkan judge issues"
+      instruction_style: "Spesifik: 'Field X harus diisi, format harus Y, confidence terlalu tinggi untuk data yang tidak lengkap'"
+    
+    retry_2:
+      description: "Retry kedua — lebih directive"
+      instruction_style: "Tegas: 'Field A, B, C wajib diisi. Format timestamp harus ISO 8601. Confidence kurangi ke 0.7.'"
+    
+    retry_3:
+      description: "Retry ketiga — last attempt"
+      instruction_style: "Eksplisit: berikan expected output structure. 'Isi field ini dengan nilai ini. Output HARUS comply ke schema X.'"
+
+# ============================================================
+# CIRCUIT BREAKER
+# ============================================================
+circuit_breaker:
+
+  triggers:
+    max_retries_exceeded:
+      condition: "retry_count > 3 untuk artifact yang sama"
+      action: "HUMAN_ESCALATION"
+      log: "Circuit breaker: max retries (3) exceeded for artifact {artifact_id}"
+    
+    agent_timeout:
+      condition: "Agent run > 120 detik"
+      action: "Terminate agent → HUMAN_ESCALATION"
+      log: "Circuit breaker: agent timeout ({duration}s) for agent {agent_id}"
+    
+    loop_detection:
+      condition: "State tidak berubah setelah 5 turn berturut-turut"
+      action: "HUMAN_ESCALATION"
+      log: "Circuit breaker: loop detected — state stuck at {state} for 5 turns"
+      tracking: "state_transition_counter per lead — reset setiap state berubah"
+    
+    context_overflow:
+      condition: "Orchestrator context > max_tokens * 1.5"
+      action: "Force context trim → jika masih over → HUMAN_ESCALATION"
+      log: "Circuit breaker: context overflow ({size} tokens vs max {max_tokens})"
+    
+    consecutive_judge_fails:
+      condition: "3+ agent berbeda gagal judge dalam conversation yang sama"
+      action: "HUMAN_ESCALATION — kemungkinan ada masalah sistemik"
+      log: "Circuit breaker: {count} consecutive judge failures — possible systemic issue"
+
+  escalation_artifact:
+    description: "Data yang dikirim ke human agent saat circuit breaker triggered"
+    fields:
+      breaker_type: string          # max_retries | timeout | loop | overflow | consecutive_fails
+      lead_id: string
+      current_state: string
+      artifact_chain_ids: array     # full traceability
+      last_judge_issues: array      # issues dari judge terakhir
+      retry_count: integer
+      failed_agent: string
+      timestamp: string

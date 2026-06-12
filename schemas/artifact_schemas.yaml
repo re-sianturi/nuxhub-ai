@@ -1,0 +1,242 @@
+# NuxHub AI — Artifact Schema Definition
+# Setiap agent wajib comply ke schema ini. Ini adalah kontrak komunikasi.
+# 41.77% multi-agent failure dari specification ambiguity → schema HARUS rigid.
+
+# ============================================================
+# BASE ARTIFACT (8 mandatory fields — semua agent wajib)
+# ============================================================
+base_artifact:
+  description: "Base schema untuk semua artifact antar-agent"
+  required_fields:
+    - artifact_id       # uuid v4, unique per artifact
+    - parent_artifact_id # uuid, null untuk artifact pertama (Router output)
+    - agent_id          # nama agent yang produksi artifact ini
+    - timestamp         # ISO 8601, waktu artifact dibuat
+    - status            # enum: success | partial | error
+    - confidence_score  # float 0.0-1.0, keyakinan agent terhadap output
+    - data              # object, payload spesifik agent
+    - error_report      # object, wajib diisi jika status=error, null jika success
+
+# ============================================================
+# AGENT 1 — ROUTER AGENT
+# ============================================================
+router:
+  description: "Gate awal — klasifikasi lead, spam check, escalation check, tentukan state"
+  
+  input_schema:
+    raw_message: string     # pesan mentah dari user
+    spam_score: integer     # dari Spam Gate (Fase 1.1), default 0
+    escalate_flag: boolean  # dari Escalation Gate (Fase 1.2), default false
+    escalate_reason: string # alasan escalation, null jika false
+    long_memory: object     # dari Long Memory (Fase 3.3), null jika lead baru
+      contact_history: array
+      purchases: array
+      complaints: array
+      last_state: string
+  
+  output_schema:
+    lead_id: string           # uuid, generated untuk lead baru
+    state_assignment: string  # enum: DISCOVERY | BLACKLIST | HUMAN_ESCALATION
+    delegated_agent: string   # agent mana yang dituju (null jika BLACKLIST/HUMAN)
+    reason: string            # alasan routing decision
+    is_returning_lead: bool   # true jika long_memory tidak null
+    previous_state: string    # state terakhir dari long_memory, null jika lead baru
+    initial_context: object   # ringkasan yang dikirim ke agent berikutnya
+      lead_name: string
+      returning_summary: string  # null jika lead baru
+
+# ============================================================
+# AGENT 2 — DISCOVERY AGENT (includes Psychology)
+# ============================================================
+discovery:
+  description: "Kumpulkan informasi lead + detect personality + adjust tone"
+  
+  input_schema:
+    lead_id: string
+    state: "DISCOVERY"
+    initial_context: object     # dari Router
+    conversation_turn: integer  # turn ke berapa dalam discovery (1-based)
+    last_user_message: string   # pesan terakhir user
+    collected_so_far: object    # field yang sudah terisi dari turn sebelumnya
+      nama: string | null
+      lokasi: string | null
+      bisnis: string | null
+      masalah: string | null
+      goal: string | null
+      budget: string | null
+      timeline: string | null
+      decision_maker: string | null
+      personality_type: string | null  # analytical | driver | amiable | expressive | null
+  
+  output_schema:
+    lead_profile:
+      nama: string | null
+      lokasi: string | null
+      bisnis: string | null
+      masalah: string | null
+      goal: string | null
+      budget: string | null
+      timeline: string | null
+      decision_maker: string | null
+    personality_type: string     # analytical | driver | amiable | expressive
+    personality_confidence: float # 0.0-1.0, keyakinan profiling
+    personality_evidence: string # alasan profiling (kutipan dari user)
+    fields_filled_count: integer # jumlah field non-null (max 8)
+    discovery_complete: boolean  # true jika fields_filled >= 6
+    next_question: string        # pertanyaan berikutnya (kosong jika complete)
+    tone_used: string            # tone yang dipakai (sesuai personality)
+    conversation_summary: string # ringkasan discovery untuk context orchestrator
+
+# ============================================================
+# AGENT 3 — QUALIFICATION AGENT
+# ============================================================
+qualification:
+  description: "BANT scoring + tier classification + gap analysis"
+  
+  input_schema:
+    lead_id: string
+    state: "QUALIFICATION"
+    lead_profile: object       # dari Discovery Agent
+    conversation_history: string # ringkasan discovery (bukan full history)
+  
+  output_schema:
+    bant_score: integer         # 0-100
+    tier: string                # hot (80+) | warm (50-80) | cold (<50)
+    bant_detail:
+      budget:
+        score: integer          # 0-25
+        evidence: string        # bukti dari conversation
+      authority:
+        score: integer
+        evidence: string
+      need:
+        score: integer
+        evidence: string
+      timeline:
+        score: integer
+        evidence: string
+    gap_analysis:               # Layer 8 — Gap Selling
+      current_state: string     # kondisi sekarang
+      desired_state: string     # target yang diinginkan
+      gap_description: string   # deskripsi gap
+      gap_severity: string      # low | medium | high | critical
+    qualified: boolean          # true jika bant_score >= 50
+    next_state: string          # OFFERING (qualified) | FOLLOW_UP (cold, <50)
+    conversation_summary: string
+
+# ============================================================
+# AGENT 4 — OBJECTION AGENT
+# ============================================================
+objection:
+  description: "Handle objections dari objections DB + root cause analysis"
+  
+  input_schema:
+    lead_id: string
+    state: "OBJECTION"
+    lead_profile: object
+    bant_score: integer
+    personality_type: string
+    current_objection: string   # objection yang dilontarkan user
+    objection_history: array    # objection sebelumnya dalam conversation ini
+  
+  output_schema:
+    objection_matched: string   # key dari objections.yaml (null jika tidak match)
+    root_cause: string          # analisis penyebab objection
+    response_strategy: string   # strategi response (dari objections DB)
+    suggested_response: string  # teks response ke user
+    follow_up_question: string  # pertanyaan lanjutan setelah response
+    objection_resolved: boolean # apakah objection sudah teratasi
+    next_action: string         # retry_offer | modify_offer | escalate
+    conversation_summary: string
+
+# ============================================================
+# AGENT 5 — CLOSING AGENT
+# ============================================================
+closing:
+  description: "Generate CTA sesuai objective + personality + state"
+  
+  input_schema:
+    lead_id: string
+    state: "CLOSING"
+    lead_profile: object
+    bant_score: integer
+    personality_type: string
+    objective: string           # booking_meeting | checkout | submit_form | visit_store | send_document
+    offer_accepted: boolean     # apakah user terima offer
+  
+  output_schema:
+    cta_type: string            # direct_buy | consultation | demo | visit
+    cta_message: string         # pesan CTA yang disesuaikan personality
+    future_pacing: string       # Layer 8 — Future Pacing
+    urgency_factor: string      # low | medium | high (untuk hot lead = high)
+    next_steps: array           # langkah konkret setelah CTA
+    closing_script: string      # full closing message
+    conversation_summary: string
+
+# ============================================================
+# AGENT 6 — JUDGE AGENT (ISOLATED)
+# ============================================================
+judge:
+  description: "QA verifier — isolated context, HARUS TERPISAH dari producer"
+  
+  input_schema:
+    producer_artifact: object   # full artifact dari agent yang diverifikasi
+    expected_schema_ref: string # referensi schema yang diharapkan (e.g. "discovery.output_schema")
+    conversation_objective: string # objective bisnis (booking_meeting, dll)
+  
+  output_schema:
+    pass: boolean               # true jika artifact valid
+    issues: array               # daftar masalah (kosong jika pass)
+      - severity: string        # critical | major | minor
+        field: string           # field yang bermasalah
+        description: string     # deskripsi masalah
+        expected: string        # yang diharapkan
+        actual: string          # yang didapat
+    corrected_confidence: float # confidence yang dikoreksi (jika overconfident)
+    schema_compliance: boolean  # apakah comply ke expected schema
+    objective_alignment: boolean # apakah output mengarah ke objective
+    conversation_summary: string
+
+# ============================================================
+# AGENT 7 — FOLLOW UP AGENT (CRON)
+# ============================================================
+follow_up:
+  description: "Recovery flow — 1h, 3h, 7h, 30h setelah last contact"
+  
+  input_schema:
+    lead_id: string
+    lead_profile: object
+    last_state: string          # state terakhir sebelum follow up
+    follow_up_stage: integer    # 1 (1h) | 2 (3h) | 3 (7h) | 4 (30h reactivation)
+    tier: string                # hot | warm | cold
+    days_since_last_contact: integer
+  
+  output_schema:
+    follow_up_message: string   # pesan follow up
+    message_strategy: string    # alasan strategi pesan ini
+    next_trigger: string        # ISO 8601 untuk trigger berikutnya
+    should_continue: boolean    # false jika sudah waktunya berhenti follow up
+    reactivation_offer: string  # tawaran khusus untuk reactivation (null jika bukan stage 4)
+    conversation_summary: string
+
+# ============================================================
+# ORCHESTRATOR CONTEXT (short memory format)
+# ============================================================
+orchestrator_context:
+  description: "Ringkasan yang disimpan di context window orchestrator — BUKAN full history"
+  schema:
+    lead_id: string
+    lead_name: string
+    state: string               # current state
+    personality_type: string
+    bant_score: integer
+    tier: string
+    objective: string
+    fields_filled: integer
+    offer_shown: boolean
+    objection_count: integer
+    last_agent: string
+    last_artifact_id: string
+    last_response_to_user: string # ringkasan 1 kalimat
+    turn_count: integer
+    spam_score: integer

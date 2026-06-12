@@ -1,0 +1,220 @@
+# NuxHub AI — State Machine Definition
+# State-based routing, BUKAN intent-based. State lebih stabil dari intent.
+# Disimpan di artifact (bukan di memory) untuk traceability.
+
+states:
+
+  NEW_LEAD:
+    description: "Lead pertama kali masuk, belum ada data"
+    entry_condition: "Message pertama dari user, atau lead_id tidak ditemukan di CRM"
+    valid_transitions: [DISCOVERY, BLACKLIST, HUMAN_ESCALATION]
+    timeout: null
+
+  DISCOVERY:
+    description: "Agent mengumpulkan informasi lead (8 field) + profiling psychology"
+    entry_condition: "Router assign ke DISCOVERY"
+    valid_transitions: [QUALIFICATION, HUMAN_ESCALATION]
+    timeout: null
+    max_turns: 12           # max 12 turn buat complete discovery
+    completion_condition: "fields_filled_count >= 6"
+    rules:
+      - "Psychology profiling dilakukan paralel — tone disesuaikan tiap turn"
+      - "Layer 8 Problem Amplification & Contrast embedded di pertanyaan"
+      - "Kalau user off-topic: +10 spam score, arahkan kembali"
+
+  QUALIFICATION:
+    description: "BANT scoring, tentukan hot/warm/cold, gap analysis"
+    entry_condition: "discovery_complete == true"
+    valid_transitions: [OFFERING, FOLLOW_UP, OBJECTION, HUMAN_ESCALATION]
+    timeout: null
+    max_turns: 6
+    completion_condition: "bant_score computed DAN qualified flag set"
+    rules:
+      - "bant_score >= 50 → lanjut OFFERING"
+      - "bant_score < 50 → FOLLOW_UP (cold lead, jangan buang waktu)"
+      - "Layer 8 Gap Selling & Contrast embedded"
+      - "Kalau user ajukan objection → OBJECTION state"
+
+  OFFERING:
+    description: "Orchestrator tentukan offer timing, load product mapping"
+    entry_condition: "qualified == true DAN fields_filled >= 6"
+    valid_transitions: [CLOSING, OBJECTION, HUMAN_ESCALATION]
+    timeout: null
+    max_turns: 4
+    rules:
+      - "Offer muncul jika fields_filled >= 6 DAN bant_score >= 50"
+      - "Problem→product mapping dari products.yaml"
+      - "Jangan lempar semua produk — satu offer yang paling match"
+      - "Kalau user tolak offer → OBJECTION state"
+
+  OBJECTION:
+    description: "Handle objection dari user, load objections DB"
+    entry_condition: "User menolak offer atau ajukan keberatan"
+    valid_transitions: [OFFERING, CLOSING, HUMAN_ESCALATION]
+    timeout: null
+    max_turns: 8            # lebih longgar, objection bisa panjang
+    completion_condition: "objection_resolved == true ATAU max_turns tercapai"
+    rules:
+      - "Load objections.yaml — cari match objection"
+      - "Root cause analysis: 'Mahal' ≠ harga, value belum jelas"
+      - "Objection resolved → balik ke OFFERING atau langsung CLOSING"
+      - "Objection tidak resolved setelah 8 turn → escalate"
+
+  CLOSING:
+    description: "Generate CTA sesuai objective + personality + tier"
+    entry_condition: "Objection resolved ATAU langsung dari OFFERING (tanpa objection)"
+    valid_transitions: [CONVERSION, OBJECTION, HUMAN_ESCALATION]
+    timeout: null
+    max_turns: 3
+    completion_condition: "CTA delivered"
+    rules:
+      - "CTA type ditentukan dari objective: booking_meeting|checkout|submit_form|visit_store|send_document"
+      - "CTA message disesuaikan personality type"
+      - "Layer 8 Future Pacing embedded"
+      - "Hot lead: urgency high. Warm: urgency medium. Cold: tidak masuk closing."
+
+  CONVERSION:
+    description: "Lead berhasil convert — objective tercapai"
+    entry_condition: "User melakukan CTA (booking, checkout, submit, visit, kirim)"
+    valid_transitions: [FOLLOW_UP]   # hanya untuk follow up pasca-conversion
+    timeout: null
+    is_terminal: true
+    rules:
+      - "Log conversion event"
+      - "Update CRM: won = true, conversion_date = now"
+
+  FOLLOW_UP:
+    description: "Recovery flow untuk lead yang tidak convert"
+    entry_condition: "cold lead (bant_score < 50) ATAU conversion achieved ATAU lead tidak respons"
+    valid_transitions: [DISCOVERY, OFFERING]  # re-entry jika lead balas
+    timeout: null
+    max_turns: 1             # per sesi follow up cuma 1 pesan
+    rules:
+      - "Stage 1: 1 jam setelah last contact → 'Mau lanjut?'"
+      - "Stage 2: 3 jam → 'Ada pertanyaan?'"
+      - "Stage 3: 7 jam → 'Situasi berubah?'"
+      - "Stage 4: 30 hari → reactivation offer"
+      - "CRON-based trigger, bukan real-time agent"
+
+  BLACKLIST:
+    description: "Lead di-blacklist karena spam/toxic/scam"
+    entry_condition: "spam_score >= 100"
+    valid_transitions: []    # terminal
+    is_terminal: true
+    rules:
+      - "Simpan lead_id ke blacklist.yaml"
+      - "Jangan kirim response apapun"
+      - "Log untuk analytics"
+
+  HUMAN_ESCALATION:
+    description: "Conversation dioper ke manusia"
+    entry_condition: "escalate_flag true (marah, refund, legal, enterprise, circuit breaker triggered)"
+    valid_transitions: [DISCOVERY, QUALIFICATION, OFFERING, OBJECTION, CLOSING]  # bisa kembali setelah human resolve
+    is_terminal: false       # bukan terminal — human bisa kembalikan ke pipeline
+    rules:
+      - "Buat escalation artifact berisi: ringkasan, reason, artifact chain"
+      - "Human agent baca escalation artifact dan bisa assign state baru"
+      - "Setelah human resolve, conversation bisa kembali ke pipeline"
+
+# ============================================================
+# TRANSITION RULES (explicit)
+# ============================================================
+transitions:
+  "NEW_LEAD -> DISCOVERY":
+    condition: "spam_score < 100 DAN escalate == false"
+    action: "Router → Discovery Agent"
+
+  "NEW_LEAD -> BLACKLIST":
+    condition: "spam_score >= 100"
+    action: "Router → Blacklist. No response."
+
+  "NEW_LEAD -> HUMAN_ESCALATION":
+    condition: "escalate == true"
+    action: "Router → Human. Buat escalation artifact."
+
+  "DISCOVERY -> QUALIFICATION":
+    condition: "discovery_complete == true (fields_filled >= 6)"
+    action: "Discovery Agent → Qualification Agent. Pass lead_profile artifact."
+
+  "QUALIFICATION -> OFFERING":
+    condition: "bant_score >= 50 DAN fields_filled >= 6"
+    action: "Qualification Agent → Orchestrator (offer timing check) → Offer"
+
+  "QUALIFICATION -> FOLLOW_UP":
+    condition: "bant_score < 50"
+    action: "Qualification Agent → Follow Up Scheduler. Set trigger 1h."
+
+  "QUALIFICATION -> OBJECTION":
+    condition: "User ajukan objection selama qualification"
+    action: "Qualification Agent → Objection Agent"
+
+  "OFFERING -> CLOSING":
+    condition: "User terima offer ATAU langsung tanpa objection"
+    action: "Orchestrator → Closing Agent"
+
+  "OFFERING -> OBJECTION":
+    condition: "User tolak offer ATAU ajukan keberatan"
+    action: "Orchestrator → Objection Agent"
+
+  "OBJECTION -> OFFERING":
+    condition: "objection_resolved == true DAN belum closing"
+    action: "Objection Agent → Orchestrator (re-offer)"
+
+  "OBJECTION -> CLOSING":
+    condition: "objection_resolved == true DAN user siap closing"
+    action: "Objection Agent → Closing Agent"
+
+  "OBJECTION -> HUMAN_ESCALATION":
+    condition: "max_turns (8) tercapai tanpa resolve ATAU circuit breaker triggered"
+    action: "Objection Agent → Human. Buat escalation artifact."
+
+  "CLOSING -> CONVERSION":
+    condition: "User melakukan CTA (booking, checkout, submit, dll)"
+    action: "Closing Agent → Conversion. Log + update CRM."
+
+  "CLOSING -> OBJECTION":
+    condition: "User tolak CTA"
+    action: "Closing Agent → Objection Agent (re-handle)"
+
+  "CONVERSION -> FOLLOW_UP":
+    condition: "Conversion achieved"
+    action: "Scheduler set follow up pasca-conversion"
+
+  "FOLLOW_UP -> DISCOVERY":
+    condition: "Lead balas pesan follow up, mau lanjut"
+    action: "Follow Up Agent → Router (re-entry, set state DISCOVERY)"
+
+  "FOLLOW_UP -> OFFERING":
+    condition: "Lead balas dan siap offer"
+    action: "Follow Up Agent → Orchestrator (re-entry, set state OFFERING)"
+
+  "* -> HUMAN_ESCALATION":
+    condition: "Escalation trigger terdeteksi di state manapun (marah, refund, legal, enterprise)"
+    action: "State saat ini → Human. Buat escalation artifact."
+
+# ============================================================
+# SAFETY & GUARDRAILS
+# ============================================================
+safety:
+  max_turns_per_state:
+    NEW_LEAD: 1
+    DISCOVERY: 12
+    QUALIFICATION: 6
+    OFFERING: 4
+    OBJECTION: 8
+    CLOSING: 3
+    FOLLOW_UP: 1
+    HUMAN_ESCALATION: null     # no limit, human controlled
+
+  loop_detection:
+    description: "Jika state tidak maju setelah 5 turn → escalate"
+    track: "state_transition_counter per lead"
+    action: "Force HUMAN_ESCALATION"
+
+  context_guard:
+    description: "Orchestrator context ≤ configurable max tokens"
+    check: "Setiap sebelum delegate → hitung context size → trim jika over"
+
+  timeout:
+    per_agent_run: 120         # detik, per subagent execution
+    per_conversation: 3600     # detik (1 jam), whole conversation timeout

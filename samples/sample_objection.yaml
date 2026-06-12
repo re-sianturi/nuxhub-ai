@@ -1,0 +1,83 @@
+# Sample: Objection Flow → CLOSING
+# Lead qualified, dapat offer, ajukan objection "mahal", resolved, closing
+
+conversation:
+  lead_id: "lead-sample-obj-001"
+  objective: "booking_meeting"
+  personality: "analytical"
+
+  messages:
+    - turn: 1
+      from: "user"
+      message: "Saya pemilik bengkel di Bandung, butuh lebih banyak customer. Bisa bantu?"
+    - turn: 2
+      from: "agent"
+      message: "Boleh saya tahu — saat ini rata-rata berapa customer yang datang per hari, Pak?"
+    - turn: 3
+      from: "user"
+      message: "Sekitar 5-10. Target saya 20 per hari. Budget ada sekitar 5 juta."
+    - turn: 4
+      from: "agent"
+      message: "Data yang jelas. Kalau boleh tahu, apa yang sudah Bapak coba sejauh ini?"
+    - turn: 5
+      from: "user"
+      message: "Udah coba pasang spanduk, sebar brosur, sama Google Maps. Tapi hasilnya masih kecil."
+    - turn: 6
+      from: "agent"
+      message: "Berdasarkan data Bapak — bengkel Bandung, dari 5-10 ke target 20/hari, budget 5 juta — saya rekomendasikan paket profesional kami. Mencakup optimasi Google Maps + Meta Ads yang sudah teruji untuk bengkel seperti Bapak."
+    - turn: 7
+      from: "user"
+      message: "Tapi 5 juta itu lumayan mahal. Apa benar worth it?"
+    - turn: 8
+      from: "agent"
+      state: "OBJECTION"
+      agent: "Objection"
+      message: "Saya paham concern Bapak. Boleh saya tanya — 'mahal' ini dibandingkan dengan apa ya? Budget yang Bapak alokasikan atau ekspektasi hasilnya?"
+    - turn: 9
+      from: "user"
+      message: "Ya budget sih. Takut hasilnya gak sebanding."
+    - turn: 10
+      from: "agent"
+      state: "OBJECTION"
+      agent: "Objection"
+      message: "Wajar. Untuk bengkel sejenis di Bandung, klien kami rata-rata balik modal dalam 2 bulan dan dapat 15-25 customer baru per hari. Kalau target Bapak 20/hari, dalam 3 bulan itu 600 customer baru. Investasi 5 juta untuk 600 customer — itu sekitar 8 ribu per customer. Gimana menurut Bapak?"
+    - turn: 11
+      from: "user"
+      message: "8 ribu per customer... Masuk akal juga ya. Ok, gimana caranya?"
+    - turn: 12
+      from: "agent"
+      state: "CLOSING"
+      agent: "Closing"
+      message: "Tepat. Langkah selanjutnya — kita jadwalkan konsultasi untuk setup. Besok jam 10 Bapak bisa?"
+
+artifacts:
+  - step: "Objection Handling"
+    artifact_id: "art-obj-001"
+    agent_id: "objection"
+    data:
+      objection_matched: "mahal"
+      root_cause: "Value belum jelas. Concern: ROI vs investment."
+      response_strategy: "ROI framing — cost per customer calculation"
+      objection_resolved: true
+      next_action: "retry_offer"
+
+  - step: "Closing → Conversion"
+    artifact_id: "art-close-obj-001"
+    agent_id: "closing"
+    data:
+      cta_type: "consultation"
+      cta_message: "Konsultasi setup besok jam 10"
+      urgency_factor: "medium"
+
+expected_outcome:
+  conversion: true
+  objection_handled: "mahal"
+  objection_resolved_in: 2  # turn
+  analytics_events:
+    - "lead_masuk"
+    - "discovery_completed"
+    - "qualified"
+    - "offer_shown"
+    - "objection_raised"
+    - "objection_resolved"
+    - "meeting_booked"

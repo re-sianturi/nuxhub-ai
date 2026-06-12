@@ -1,0 +1,35 @@
+# Hermes-specific
+.planning/
+.env
+*.env
+.env.local
+
+# Runtime
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+*.log
+*.jsonl
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Data
+/data/leads/*.yaml
+/data/leads/*.json
+/logs/*.jsonl
+/logs/*.log
+
+# Security
+*.pem
+*.key
+*.crt
+*.cert

@@ -1,0 +1,171 @@
+# Fase 6.1 — Analytics & Logging
+# Layer 14: Track semua event, hitung conversion metrics.
+
+analytics:
+
+  events:
+    lead_masuk:
+      description: "Lead pertama kali masuk ke pipeline"
+      fields: [lead_id, timestamp, source, raw_message]
+    
+    spam_detected:
+      description: "Spam gate triggered"
+      fields: [lead_id, timestamp, spam_score, flags]
+    
+    blacklisted:
+      description: "Lead masuk blacklist"
+      fields: [lead_id, timestamp, reason]
+    
+    escalation:
+      description: "Conversation escalated ke human"
+      fields: [lead_id, timestamp, reason, priority, current_state]
+    
+    discovery_started:
+      description: "Discovery Agent mulai bekerja"
+      fields: [lead_id, timestamp]
+    
+    discovery_completed:
+      description: "Discovery selesai (fields_filled >= 6)"
+      fields: [lead_id, timestamp, fields_filled, personality_type, personality_confidence]
+    
+    qualified:
+      description: "Qualification selesai"
+      fields: [lead_id, timestamp, bant_score, tier, qualified]
+    
+    offer_shown:
+      description: "Offer ditampilkan ke lead"
+      fields: [lead_id, timestamp, product, presentation_style]
+    
+    objection_raised:
+      description: "Lead ajukan objection"
+      fields: [lead_id, timestamp, objection_type]
+    
+    objection_resolved:
+      description: "Objection berhasil di-resolve"
+      fields: [lead_id, timestamp, objection_type, turns_to_resolve]
+    
+    meeting_booked:
+      description: "CTA consultation berhasil"
+      fields: [lead_id, timestamp, meeting_time]
+    
+    checkout_completed:
+      description: "Checkout/direct buy berhasil"
+      fields: [lead_id, timestamp, product, amount]
+    
+    form_submitted:
+      description: "Form disubmit oleh lead"
+      fields: [lead_id, timestamp, form_type]
+    
+    store_visited:
+      description: "Lead datang ke toko"
+      fields: [lead_id, timestamp]
+    
+    document_sent:
+      description: "Dokumen dikirim oleh lead"
+      fields: [lead_id, timestamp, document_type]
+    
+    won:
+      description: "Lead converted (objective achieved)"
+      fields: [lead_id, timestamp, conversion_type, revenue]
+    
+    lost:
+      description: "Lead tidak convert"
+      fields: [lead_id, timestamp, reason]
+    
+    follow_up_sent:
+      description: "Follow up message dikirim"
+      fields: [lead_id, timestamp, stage]
+    
+    agent_error:
+      description: "Agent mengalami error"
+      fields: [lead_id, timestamp, agent_id, error_type, retry_count]
+    
+    judge_fail:
+      description: "Judge gagal verifikasi artifact"
+      fields: [lead_id, timestamp, agent_id, issues]
+    
+    circuit_breaker:
+      description: "Circuit breaker triggered"
+      fields: [lead_id, timestamp, breaker_type, current_state]
+
+  # ============================================================
+  # METRICS (dihitung dari events)
+  # ============================================================
+  metrics:
+    discovery_rate:
+      formula: "discovery_completed / lead_masuk"
+      description: "Persentase lead yang menyelesaikan discovery"
+      target: "> 70%"
+    
+    qualification_rate:
+      formula: "qualified / discovery_completed"
+      description: "Persentase lead yang qualified dari yang selesai discovery"
+      target: "> 50%"
+    
+    offer_rate:
+      formula: "offer_shown / qualified"
+      description: "Persentase qualified lead yang ditawarkan offer"
+      target: "> 80%"
+    
+    objection_rate:
+      formula: "objection_raised / offer_shown"
+      description: "Persentase offer yang mendapat objection"
+      target: "< 60%"
+    
+    objection_resolution_rate:
+      formula: "objection_resolved / objection_raised"
+      description: "Persentase objection yang berhasil di-resolve"
+      target: "> 70%"
+    
+    meeting_rate:
+      formula: "meeting_booked / offer_shown"
+      description: "Persentase offer yang berujung meeting"
+      target: "> 30%"
+    
+    close_rate:
+      formula: "won / lead_masuk"
+      description: "Persentase lead yang convert"
+      target: "> 10%"
+    
+    escalation_rate:
+      formula: "escalation / lead_masuk"
+      description: "Persentase lead yang dieskalasi ke human"
+      target: "< 15%"
+    
+    spam_rate:
+      formula: "spam_detected / lead_masuk"
+      description: "Persentase lead yang terdeteksi spam"
+      target: "< 5%"
+    
+    avg_discovery_turns:
+      formula: "AVG(turns in DISCOVERY state)"
+      description: "Rata-rata turn untuk menyelesaikan discovery"
+      target: "< 8"
+    
+    avg_objection_turns:
+      formula: "AVG(turns in OBJECTION state)"
+      description: "Rata-rata turn untuk resolve objection"
+      target: "< 4"
+    
+    judge_pass_rate:
+      formula: "judge_pass / total_judge_runs"
+      description: "Persentase artifact yang lolos judge first-pass"
+      target: "> 80%"
+    
+    avg_retry_count:
+      formula: "AVG(retry_count per failed artifact)"
+      description: "Rata-rata retry sebelum artifact lolos judge"
+      target: "< 1.5"
+
+  # ============================================================
+  # LOGGING FORMAT
+  # ============================================================
+  log_format:
+    file: "/data/logs/{YYYY-MM-DD}.jsonl"
+    format: "JSONL (1 event = 1 line)"
+    retention: "90 hari"
+
+  dashboard:
+    description: "Metrics dashboard (future — untuk sekarang cukup log + hitung manual)"
+    realtime: false
+    export: "CSV / JSON untuk Google Sheets atau BI tool"

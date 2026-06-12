@@ -1,0 +1,109 @@
+# NuxHub AI — Objections Database
+# Layer 7: Tiap objection punya root cause + response strategy + follow up question
+# Agent load file ini, match objection user, pilih strategi
+
+objections:
+
+  mahal:
+    keywords: ["mahal", "kemahalan", "terlalu mahal", "di atas budget", "nggak cukup budget",
+               "mahal banget", "harganya", "biayanya gede", "nggak sanggup", "over budget"]
+    root_cause: "Value belum jelas. Bukan harga masalahnya, tapi perceived value vs cost."
+    response_strategy: |
+      1. JANGAN langsung kasih diskon
+      2. Gali lebih dalam: "Mahal dibanding apa?" atau "Budget yang Bapak/Ibu siapkan berapa?"
+      3. Kalau ada competitor reference → tanya spesifik
+      4. Reframe ke ROI/value: "Kalau masalah ini selesai, berapa nilai yang didapat?"
+      5. Kalau memang budget issue → offer alternatif (paket lebih kecil, cicilan, trial)
+    response_template: |
+      Saya paham. Boleh saya tahu — "mahal" ini dibandingkan dengan apa ya, {lead_name}?
+      Supaya saya bisa bantu cari solusi yang paling sesuai dengan kebutuhan {bisnis}.
+    follow_up_question: "Budget yang Bapak/Ibu siapkan untuk ini sekitar berapa?"
+
+  belum_yakin:
+    keywords: ["belum yakin", "ragu", "kurang yakin", "masih mikir", "ga yakin",
+               "nggak yakin", "belum percaya", "masih ragu", "mikir-mikir dulu"]
+    root_cause: "Trust gap. Lead belum cukup bukti atau social proof."
+    response_strategy: |
+      1. Gali: "Apa yang bikin Bapak/Ibu ragu?"
+      2. Kasih social proof: case study, testimoni, data hasil
+      3. Kalau trust issue ke produk → offer demo/trial
+      4. Kalau trust issue ke kita → share portfolio, track record
+      5. JANGAN pushy, jangan "percaya aja sama saya"
+    response_template: |
+      Wajar banget, {lead_name}. Justru bagus kalau Bapak/Ibu teliti.
+      Boleh saya tahu — bagian mana yang paling bikin ragu? Biar saya jelaskan lebih detail.
+    follow_up_question: "Ada aspek spesifik yang ingin Bapak/Ibu pastikan dulu?"
+
+  nanti_dulu:
+    keywords: ["nanti dulu", "tunggu", "belum sekarang", "nanti aja", "belum waktunya",
+               "lagi sibuk", "nunggu", "delay", "tunda", "ditunda"]
+    root_cause: "Timing issue. Bisa genuine (lagi sibuk) atau hidden objection."
+    response_strategy: |
+      1. Bedakan: genuine timing issue vs hidden objection
+      2. Kalau genuine: "Kapan waktu yang tepat buat Bapak/Ibu?"
+      3. Kalau hidden: gali lebih dalam — apa yang ditunggu?
+      4. Problem amplification: "Apa dampaknya kalau ditunda 3 bulan?"
+      5. Set reminder/follow up di waktu yang mereka tentukan
+    response_template: |
+      Saya ngerti, {lead_name}. Emang timing itu penting.
+      Boleh saya tanya — kira-kira kapan Bapak/Ibu rencana mulai? Biar saya atur waktunya.
+    follow_up_question: "Apa yang bikin timing-nya belum pas sekarang?"
+
+  lagi_mikir:
+    keywords: ["lagi mikir", "dipikirkan dulu", "mikir dulu", "pertimbangkan",
+               "dipikir-pikir", "saya pikirkan", "mikir-mikir"]
+    root_cause: "Need more information atau decision maker bukan dia."
+    response_strategy: |
+      1. "Apa yang masih jadi pertimbangan, {lead_name}?"
+      2. Cek: apakah dia decision maker? Kalau bukan → "Siapa yang biasanya ambil keputusan?"
+      3. Kasih ringkasan benefit/next steps supaya dia bisa present ke decision maker
+      4. Tanya: "Ada yang masih kurang jelas yang bisa saya bantu jelaskan?"
+    response_template: |
+      Tentu, {lead_name}. Saya hargai betul kalau Bapak/Ibu mau pertimbangkan matang-matang.
+      Ada yang masih jadi pertimbangan yang bisa saya bantu jelaskan lebih lanjut?
+    follow_up_question: "Biasanya, keputusan seperti ini dibahas sama siapa lagi, {lead_name}?"
+
+  sudah_ada_vendor:
+    keywords: ["sudah ada", "udah pakai", "vendor lain", "sudah bekerjasama",
+               "sudah kerja sama", "ada partner", "langganan", "sudah langganan",
+               "pakai yang lain", "ada yang handle"]
+    root_cause: "Switching cost + loyalty. Lead lihat risiko lebih besar dari benefit."
+    response_strategy: |
+      1. JANGAN jelek-jelekin vendor existing
+      2. Gali: "Apa yang paling Bapak/Ibu suka dari vendor sekarang?"
+      3. Cari pain point: "Ada yang kurang atau masih bisa lebih baik?"
+      4. Posisikan sebagai complement dulu, bukan replacement
+      5. Kalau ada gap → fokus di gap, bukan di vendor
+    response_template: |
+      Bagus banget kalau Bapak/Ibu udah ada yang handle, artinya bisnisnya serius.
+      Boleh saya tahu — apa yang paling Bapak/Ibu suka dari kerja sama sekarang?
+      Siapa tau kami justru bisa bantu di area yang berbeda.
+    follow_up_question: "Ada area yang menurut Bapak/Ibu masih bisa di-improve?"
+
+  tidak_ada_budget:
+    keywords: ["gak ada budget", "tidak ada budget", "belum ada anggaran",
+               "budget habis", "anggaran kosong", "nggak dianggarkan"]
+    root_cause: "Budget tidak dialokasikan untuk ini atau prioritas rendah."
+    response_strategy: |
+      1. Bedakan: benar-benar tidak ada budget vs tidak diprioritaskan
+      2. Kalau tidak diprioritaskan → problem amplification: dampak kalau gak selesai?
+      3. Kalau benar-benar tidak ada budget → tanya: "Kapan anggaran biasanya disusun?"
+      4. Offer: free consultation, free resources, atau trial untuk bangun value dulu
+      5. MASUKKAN ke follow up pipeline untuk next budget cycle
+    response_template: |
+      Saya mengerti, {lead_name}. Anggaran memang harus diatur baik-baik.
+      Boleh saya tahu — biasanya siklus anggaran di {bisnis} itu kapan ya?
+      Siapa tau timing-nya bisa disesuaikan.
+    follow_up_question: "Kapan biasanya Bapak/Ibu mulai susun anggaran untuk periode berikutnya?"
+
+# ============================================================
+# OBJECTION MATCHING RULES
+# ============================================================
+matching:
+  method: "keyword + semantic"
+  priority:
+    - "Cocokkan keyword dulu (case-insensitive, partial match)"
+    - "Kalau multiple match → pilih yang keyword count tertinggi"
+    - "Kalau tidak ada keyword match → semantic similarity (LLM-based)"
+  fallback:
+    - "Jika tidak ada match sama sekali → tanya balik: 'Boleh saya tahu lebih detail apa yang jadi concern Bapak/Ibu?'"

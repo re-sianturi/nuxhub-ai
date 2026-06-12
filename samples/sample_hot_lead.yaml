@@ -1,0 +1,207 @@
+# NuxHub AI — Sample Conversation: Hot Lead
+# Flow: NEW_LEAD → DISCOVERY → QUALIFICATION → OFFERING → CLOSING → CONVERSION
+# Tipe: Driver | Objective: booking_meeting
+
+conversation:
+  lead_id: "lead-sample-hot-001"
+  objective: "booking_meeting"
+
+  messages:
+    - turn: 1
+      from: "user"
+      message: "Halo, saya butuh bantuan untuk dapat lebih banyak customer. Bisa bantu?"
+
+    - turn: 2
+      from: "agent"
+      state: "DISCOVERY"
+      agent: "Discovery"
+      message: "Tentu, Pak. Boleh saya tahu bisnis apa yang sedang Bapak jalankan?"
+      personality_detected: null
+
+    - turn: 3
+      from: "user"
+      message: "Klinik kecantikan di Jakarta Selatan. Sudah jalan 3 tahun."
+
+    - turn: 4
+      from: "agent"
+      state: "DISCOVERY"
+      agent: "Discovery"
+      message: "Klinik kecantikan 3 tahun — artinya sudah established. Saat ini sumber pasien utamanya dari mana, Pak?"
+      personality_detected: "driver"
+
+    - turn: 5
+      from: "user"
+      message: "Dari IG, tapi sekarang saingan banyak. Pasien baru mulai turun."
+
+    - turn: 6
+      from: "agent"
+      state: "DISCOVERY"
+      agent: "Discovery"
+      message: "Paham. Kalau boleh tahu, target pasien baru per bulan yang Bapak harapkan berapa?"
+      personality_detected: "driver"
+
+    - turn: 7
+      from: "user"
+      message: "Minimal 50 pasien baru per bulan. Budget sekitar 10 juta."
+
+    - turn: 8
+      from: "agent"
+      state: "DISCOVERY"
+      agent: "Discovery"
+      message: "50 pasien per bulan dengan budget 10 juta — jelas targetnya. Kapan Bapak berharap mulai?"
+      personality_detected: "driver"
+
+    - turn: 9
+      from: "user"
+      message: "Secepatnya. Bulan ini kalau bisa. Saya yang ambil keputusan."
+
+    - turn: 10
+      from: "agent"
+      state: "QUALIFICATION"
+      agent: "Qualification"
+      message: "Siap, Pak. Jadi: klinik kecantikan, Jakarta Selatan, target 50 pasien baru/bulan, budget 10 juta, mulai secepatnya, Bapak decision maker. Saya sudah punya gambaran. Ada 3 pendekatan yang bisa kita ambil — saya rekomendasikan yang paling cocok untuk situasi Bapak."
+
+# ============================================================
+# EXPECTED ARTIFACT CHAIN
+# ============================================================
+artifacts:
+
+  - step: "Router → Discovery"
+    artifact:
+      artifact_id: "art-router-hot-001"
+      parent_artifact_id: null
+      agent_id: "router"
+      timestamp: "2026-06-12T00:30:00Z"
+      status: "success"
+      confidence_score: 1.0
+      data:
+        lead_id: "lead-sample-hot-001"
+        state_assignment: "DISCOVERY"
+        delegated_agent: "discovery"
+        reason: "Lead baru, spam=0, no escalation trigger"
+        is_returning_lead: false
+        previous_state: null
+        initial_context:
+          lead_name: null
+          returning_summary: null
+      error_report: null
+
+  - step: "Discovery → Qualification"
+    artifact:
+      artifact_id: "art-discovery-hot-001"
+      parent_artifact_id: "art-router-hot-001"
+      agent_id: "discovery"
+      timestamp: "2026-06-12T00:35:00Z"
+      status: "success"
+      confidence_score: 0.9
+      data:
+        lead_profile:
+          nama: "Bapak Andi"
+          lokasi: "Jakarta Selatan"
+          bisnis: "Klinik Kecantikan"
+          masalah: "Pasien baru turun, saingan IG banyak"
+          goal: "50 pasien baru per bulan"
+          budget: "10 juta"
+          timeline: "Secepatnya, bulan ini"
+          decision_maker: "Ya, Bapak Andi sendiri"
+        personality_type: "driver"
+        personality_confidence: 0.85
+        personality_evidence: "Pesan pendek, langsung ke inti, tanya secepatnya, decisive"
+        fields_filled_count: 7
+        discovery_complete: true
+        next_question: null
+        tone_used: "driver — direct, to the point"
+        conversation_summary: "Klinik kecantikan Jakarta Selatan, 3 tahun, pasien turun, target 50/bulan, budget 10jt, decision maker, driver type."
+      error_report: null
+
+  - step: "Qualification → Offering"
+    artifact:
+      artifact_id: "art-qual-hot-001"
+      parent_artifact_id: "art-discovery-hot-001"
+      agent_id: "qualification"
+      timestamp: "2026-06-12T00:38:00Z"
+      status: "success"
+      confidence_score: 0.88
+      data:
+        bant_score: 85
+        tier: "hot"
+        bant_detail:
+          budget:
+            score: 20
+            evidence: "Budget 10 juta, jelas disebut"
+          authority:
+            score: 25
+            evidence: "Decision maker, dia sendiri yang putuskan"
+          need:
+            score: 25
+            evidence: "Pasien baru turun, saingan banyak — need jelas"
+          timeline:
+            score: 15
+            evidence: "Secepatnya, bulan ini — urgency tinggi"
+        gap_analysis:
+          current_state: "Pasien turun, saingan IG banyak, belum optimal"
+          desired_state: "50 pasien baru per bulan, growth stabil"
+          gap_description: "Dari pasien turun ke 50 pasien baru — butuh strategi akuisisi"
+          gap_severity: "high"
+        qualified: true
+        next_state: "OFFERING"
+        conversation_summary: "BANT 85, HOT lead, driver, qualified. Lanjut offering."
+      error_report: null
+
+  - step: "Orchestrator (Offer Timing) → Closing"
+    artifact:
+      artifact_id: "art-offer-hot-001"
+      parent_artifact_id: "art-qual-hot-001"
+      agent_id: "orchestrator"
+      timestamp: "2026-06-12T00:40:00Z"
+      status: "success"
+      confidence_score: 0.95
+      data:
+        offer:
+          product: "paket_profesional"
+          match_reason: "Bisnis menengah, sudah jalan 3 tahun, butuh growth, budget 10jt"
+          presentation_style: "driver — 2-3 opsi, rekomendasi tegas"
+          cta_type: "consultation"
+        offer_timing_check:
+          fields_filled: 7
+          bant_score: 85
+          personality_known: true
+          offer_allowed: true
+      error_report: null
+
+  - step: "Closing → Conversion"
+    artifact:
+      artifact_id: "art-close-hot-001"
+      parent_artifact_id: "art-offer-hot-001"
+      agent_id: "closing"
+      timestamp: "2026-06-12T00:42:00Z"
+      status: "success"
+      confidence_score: 0.9
+      data:
+        cta_type: "consultation"
+        cta_message: "Pak Andi, saya rekomendasikan kita mulai dengan sesi konsultasi dulu — gratis, 30 menit. Saya akan paparkan strategi yang paling cocok untuk klinik Bapak berdasarkan data yang sudah kita diskusikan. Kapan Bapak bisa? Besok jam 10 atau jam 2?"
+        future_pacing: "Bayangkan 3 bulan dari sekarang, 50 pasien baru per bulan sudah konsisten — itu target yang achievable dengan strategi yang tepat."
+        urgency_factor: "high"
+        next_steps:
+          - "Pilih jadwal konsultasi: besok jam 10 atau jam 2"
+          - "Konfirmasi via WhatsApp"
+          - "Kirim link Google Meet"
+        closing_script: "Oke Pak, kita jadwalkan konsultasi besok. Saya akan share link Meet-nya. Sampai ketemu besok!"
+      error_report: null
+
+# ============================================================
+# EXPECTED OUTCOME
+# ============================================================
+expected_outcome:
+  conversion: true
+  cta_booked: "consultation"
+  analytics_events:
+    - "lead_masuk"
+    - "discovery_completed"
+    - "qualified"
+    - "offer_shown"
+    - "meeting_booked"
+  metrics:
+    discovery_rate: "100% (discovery completed dalam 1 flow)"
+    qualification_rate: "100% (qualified dengan BANT 85)"
+    meeting_rate: "100% (meeting booked)"

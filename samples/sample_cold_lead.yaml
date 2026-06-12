@@ -1,0 +1,55 @@
+# Sample: Cold Lead → FOLLOW_UP
+# Lead tidak qualified (BANT < 50), dialihkan ke follow up pipeline
+
+conversation:
+  lead_id: "lead-sample-cold-001"
+  objective: "booking_meeting"
+  messages:
+    - turn: 1
+      from: "user"
+      message: "Halo, mau tanya-tanya soal iklan"
+    - turn: 2
+      from: "agent"
+      message: "Halo. Boleh saya tahu bisnis apa yang sedang dijalankan?"
+    - turn: 3
+      from: "user"
+      message: "Jualan online sih, kecil-kecilan. Baru 2 bulan."
+    - turn: 4
+      from: "agent"
+      message: "Saya paham. Saat ini sumber customer-nya dari mana?"
+    - turn: 5
+      from: "user"
+      message: "Baru dari WA grup aja sih. Belum banyak."
+    - turn: 6
+      from: "agent"
+      message: "Kalau boleh tahu, apa yang Bapak/Ibu harapkan dari iklan nantinya?"
+    - turn: 7
+      from: "user"
+      message: "Ya pengen sih banyak yang beli. Budget paling 500rb sebulan. Tapi nanti-nanti dulu deh, liat-liat aja."
+    - turn: 8
+      from: "agent"
+      message: "Baik, terima kasih sharing-nya. Saya catat dulu ya — nanti kalau sudah lebih siap, saya bisa bantu rekomendasikan opsi yang cocok buat budget dan kondisi Bapak/Ibu. Boleh saya follow up minggu depan?"
+
+artifacts:
+  - step: "Qualification Output"
+    artifact_id: "art-qual-cold-001"
+    agent_id: "qualification"
+    data:
+      bant_score: 25
+      tier: "cold"
+      bant_detail:
+        budget: {score: 5, evidence: "500rb/bulan, sangat terbatas"}
+        authority: {score: 10, evidence: "Mungkin decision maker, tapi belum jelas"}
+        need: {score: 5, evidence: "Butuh customer, tapi tidak urgent"}
+        timeline: {score: 5, evidence: "'Nanti-nanti dulu', tidak ada urgency"}
+      gap_analysis:
+        current_state: "Jualan online kecil, baru 2 bulan, WA grup"
+        desired_state: "Banyak yang beli"
+        gap_severity: "low"
+      qualified: false
+      next_state: "FOLLOW_UP"
+
+expected_outcome:
+  conversion: false
+  follow_up_stage: 1
+  analytics_events: ["lead_masuk", "discovery_partial", "not_qualified"]

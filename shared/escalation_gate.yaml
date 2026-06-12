@@ -1,0 +1,74 @@
+# Fase 1.2 — Human Escalation Gate
+# Deteksi trigger untuk handoff ke human.
+# Dijalankan SEBELUM Router (barengan dengan Spam Gate).
+
+escalation_triggers:
+
+  marah:
+    keywords: ["marah", "kesal", "kecewa", "parah", "buruk", "jelek banget",
+               "gak puas", "tidak puas", "nggak membantu", "buang waktu"]
+    priority: "high"
+    action: "Escalate immediately. Human agent harus handle."
+    message_to_lead: "Mohon maaf atas ketidaknyamanannya. Saya akan sambungkan Bapak/Ibu dengan tim kami yang bisa membantu langsung."
+
+  komplain_berat:
+    keywords: ["komplain", "lapor", "adukan", "tuntut", "penipuan",
+               "uang saya", "refund", "kembalikan uang", "tanggung jawab"]
+    priority: "high"
+    action: "Escalate immediately. Siapkan full conversation summary."
+    message_to_lead: "Saya paham concern Bapak/Ibu. Ini akan langsung saya eskalasikan ke tim terkait. Mohon tunggu sebentar."
+
+  refund:
+    keywords: ["refund", "kembalikan", "uang kembali", "cancel", "batalkan",
+               "minta balik", "tarik dana", "withdraw"]
+    priority: "high"
+    action: "Escalate ke human agent dengan authority refund."
+    message_to_lead: "Baik, untuk permintaan refund, saya akan sambungkan dengan tim billing kami."
+
+  legal:
+    keywords: ["hukum", "legal", "pengacara", "somasi", "tuntut",
+               "laporkan", "polisi", "pidana", "perdata", "pasal"]
+    priority: "critical"
+    action: "Escalate immediately. JANGAN beri response apapun selain acknowledgement."
+    message_to_lead: "Baik, untuk hal ini akan langsung ditangani oleh tim legal kami."
+
+  custom_deal:
+    keywords: ["custom", "khusus", "special", "nego", "harga khusus",
+               "volume besar", "banyak", "grosir", "partnership"]
+    priority: "medium"
+    action: "Escalate ke sales manager. Bukan untuk agent automasi."
+    message_to_lead: "Untuk kebutuhan khusus seperti ini, saya akan sambungkan dengan tim specialist kami."
+
+  enterprise:
+    keywords: ["enterprise", "perusahaan", "korporat", "corporate",
+               "banyak cabang", "multi", "holding", "group"]
+    priority: "medium"
+    action: "Escalate ke enterprise sales team."
+    message_to_lead: "Baik, untuk skala enterprise, tim khusus kami akan menghubungi Bapak/Ibu."
+
+  circuit_breaker:
+    description: "Auto-escalate jika system gagal"
+    triggers:
+      - "3x judge FAIL untuk artifact yang sama"
+      - "Timeout 120 detik per agent run"
+      - "Loop detection: state tidak maju setelah 5 turn"
+      - "Context guard triggered (context terlalu besar)"
+    priority: "high"
+    action: "Escalate ke human + log full artifact chain untuk debugging."
+
+# ============================================================
+# ESCALATION ARTIFACT FORMAT
+# ============================================================
+escalation_artifact:
+  description: "Format artifact yang dikirim ke human agent"
+  fields:
+    lead_id: string
+    escalation_reason: string         # trigger yang match
+    priority: string                  # low | medium | high | critical
+    current_state: string             # state terakhir sebelum escalate
+    conversation_summary: string      # ringkasan conversation
+    artifact_chain_ids: array         # semua artifact_id dari awal conversation
+    lead_profile: object              # data lead yang sudah dikumpulkan
+    last_agent_output: object         # output agent terakhir
+    error_report: object | null       # jika dari circuit breaker
+    escalate_timestamp: string        # ISO 8601

@@ -1,0 +1,111 @@
+# NuxHub AI — Psychological Profiling
+# Layer 5: Deteksi tipe orang + adjust tone respons
+# Profiling dilakukan paralel dengan Discovery
+
+types:
+
+  analytical:
+    description: "Banyak tanya data, detail-oriented, butuh bukti"
+    signals:
+      - "Minta data spesifik, angka, statistik"
+      - "Tanya 'berapa', 'gimana caranya', 'apa buktinya'"
+      - "Minta contoh konkret atau case study"
+      - "Bahasa formal, terstruktur, tidak banyak basa-basi"
+      - "Response lebih ke logical daripada emotional"
+    tone_rules:
+      - "Kasih data, bukan klaim kosong"
+      - "Jangan lebay, jangan terlalu antusias"
+      - "Struktur jawaban: fakta → data → kesimpulan"
+      - "Akui kalau ada yang belum pasti"
+      - "Gunakan kata: 'berdasarkan', 'datanya menunjukkan', 'studi kasus'"
+    phrase_examples:
+      question: "Berdasarkan data yang ada, berapa rata-rata lead yang Bapak/Ibu dapat per bulan?"
+      response: "Untuk kasus serupa, klien kami di bidang {bisnis} rata-rata mengalami peningkatan X% dalam 3 bulan pertama."
+    objection_handling: "Kasih data ROI, case study, kalkulasi TCO"
+    offer_presentation: "Satu halaman proposal dengan breakdown jelas"
+
+  driver:
+    description: "Mau cepat, to the point, decisive, efficiency-focused"
+    signals:
+      - "Pesan pendek, langsung ke inti"
+      - "Tanya 'berapa lama', 'kapan mulai', 'langsung aja'"
+      - "Tidak sabar dengan penjelasan panjang"
+      - "Response cepat, decisive"
+      - "Bahasa langsung: 'mau', 'perlu', 'bisa'"
+    tone_rules:
+      - "Kasih opsi (2-3), rekomendasi yang paling cocok"
+      - "Jangan bertele-tele, langsung ke value"
+      - "Highlight speed + hasil"
+      - "Bahasa confident: 'Saya rekomendasikan', 'Yang paling efektif'"
+      - "Respect waktu mereka — jangan tanya yang gak perlu"
+    phrase_examples:
+      question: "Cepat saja — apa tantangan terbesar yang Bapak/Ibu hadapi sekarang?"
+      response: "Ada 3 opsi. Saya rekomendasikan opsi B karena paling cepat hasilnya untuk situasi Bapak/Ibu."
+    objection_handling: "Fokus ke hasil + kecepatan, bukan detail"
+    offer_presentation: "3 opsi, rekomendasi 1, next step jelas"
+
+  amiable:
+    description: "Banyak cerita, relationship-focused, butuh koneksi personal"
+    signals:
+      - "Cerita panjang tentang bisnis/perjalanan mereka"
+      - "Gunakan kata 'saya rasa', 'menurut saya', 'pengalaman'"
+      - "Tanya tentang orang di balik bisnis"
+      - "Bahasa personal, banyak 'kita', 'saya'"
+      - "Response emosional, relate ke pengalaman"
+    tone_rules:
+      - "Bangun rapport dulu, jangan langsung jualan"
+      - "Validasi perasaan/pengalaman mereka: 'Saya paham'"
+      - "Gunakan storytelling, bukan data mentah"
+      - "Bahasa hangat: 'kita', 'sama-sama', 'bantu'"
+      - "Sabari — jangan buru-buru"
+    phrase_examples:
+      question: "Wah, menarik sekali ceritanya. Boleh saya tahu lebih detail — apa yang paling bikin Bapak/Ibu semangat menjalankan bisnis ini?"
+      response: "Saya paham banget perasaan itu, {lead_name}. Banyak klien kami juga ngalamin hal yang sama di awal."
+    objection_handling: "Empati + cerita sukses dari klien yang mirip"
+    offer_presentation: "Cerita: 'Ada klien kami yang tadinya {masalah}, sekarang {hasil}'"
+
+  expressive:
+    description: "Antusias, vision-driven, big picture, suka ide baru"
+    signals:
+      - "Bahasa energetik, banyak seru (!), emoji"
+      - "Antusias tentang ide atau visi"
+      - "Bicara tentang 'potensi', 'mimpi', 'impian', 'besar'"
+      - "Cepat excited, tapi juga cepat kehilangan minat"
+      - "Bahasa visual: 'bayangkan', 'lihat', 'gambaran'"
+    tone_rules:
+      - "Match energi mereka — antusias tapi tetap profesional"
+      - "Gambarkan visi besar, bukan detail kecil"
+      - "Gunakan kata vision-driven: 'bayangkan', 'potensinya', 'bisa jadi'"
+      - "Jangan terlalu technical — mereka peduli big picture"
+      - "Keep momentum — jangan lama-lama di satu topik"
+    phrase_examples:
+      question: "Keren banget! Jadi Bapak/Ibu punya visi besar untuk bisnis ini — boleh diceritakan lebih detail impiannya?"
+      response: "Bayangkan kalau dalam 6 bulan, {goal} itu sudah tercapai. Itu yang bisa kita wujudkan sama-sama."
+    objection_handling: "Reframe obstacle jadi challenge yang exciting"
+    offer_presentation: "Gambarkan visi hasil akhir + bagaimana mencapainya"
+
+# ============================================================
+# PROFILING ALGORITHM
+# ============================================================
+detection:
+  method: "Keyword + pattern + semantic analysis"
+  min_messages: 2     # minimal 2 pesan user untuk profiling akurat
+  confidence_threshold: 0.6   # confidence minimal untuk assign type
+  
+  signals_weight:
+    keyword_match: 0.4      # kata kunci yang match tipe
+    message_length: 0.1     # panjang pesan
+    emotional_tone: 0.3     # nada emosional
+    question_type: 0.2      # tipe pertanyaan
+  
+  fallback: "analytical"     # default kalau tidak bisa profiling — paling aman
+
+# ============================================================
+# CROSS-TYPE RULES
+# ============================================================
+cross_type:
+  note: "Orang bisa campuran 2 tipe. Pilih dominant type, tapi bisa adaptasi."
+  adaptation:
+    - "Kalau dominant 60%+ → full adapt ke tipe itu"
+    - "Kalau campuran (40-60%) → gunakan dominant, tapi aware ke secondary"
+    - "Kalau tidak jelas → default analytical (paling aman, tidak offensive)"

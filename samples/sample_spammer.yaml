@@ -1,0 +1,33 @@
+# Sample: Spammer → BLACKLIST
+# Lead spam/scam, langsung diblacklist tanpa response
+
+conversation:
+  lead_id: "lead-sample-spam-001"
+  objective: "booking_meeting"
+  messages:
+    - turn: 1
+      from: "user"
+      message: "BUTUH PINJAMAN CEPAT? BUNGA RENDAH 0.1% TRANSFER SEKARANG JUGA KE REKENING 1234567890 GABISA NUNGGU LAMA!!!"
+
+artifacts:
+  - step: "Spam Gate"
+    artifact_id: "art-spam-gate-001"
+    agent_id: "spam_gate"
+    data:
+      spam_score: 110
+      flags: ["+10 off-topic", "+50 scam pattern detected", "+50 urgency manipulation"]
+      blacklist: true
+
+  - step: "Router → BLACKLIST"
+    artifact_id: "art-router-spam-001"
+    agent_id: "router"
+    data:
+      lead_id: "lead-sample-spam-001"
+      state_assignment: "BLACKLIST"
+      delegated_agent: null
+      reason: "spam_score 110 — above blacklist threshold (100)"
+
+expected_outcome:
+  conversion: false
+  action: "blacklist — no response sent"
+  analytics_events: ["lead_masuk", "spam_detected", "blacklisted"]

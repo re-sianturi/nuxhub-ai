@@ -1,0 +1,96 @@
+# Fase 1.3 — Context Guard
+# Menjaga context orchestrator tetap bersih.
+# Subagent HANYA terima artifact, BUKAN full conversation history.
+# Long memory TIDAK PERNAH dimuat ke context orchestrator.
+
+context_guard:
+
+  # ============================================================
+  # ORCHESTRATOR CONTEXT STRUCTURE (short memory)
+  # ============================================================
+  orchestrator_context:
+    max_tokens: 2000            # maksimum token untuk context orchestrator
+    structure:
+      lead_id: string
+      lead_name: string
+      state: string
+      personality_type: string
+      bant_score: integer
+      tier: string              # hot | warm | cold
+      objective: string         # booking_meeting | checkout | ...
+      fields_filled: integer
+      offer_shown: boolean
+      objection_count: integer
+      last_agent: string
+      last_artifact_id: string
+      last_response_summary: string  # MAX 1 kalimat
+      turn_count: integer
+      spam_score: integer
+
+  # ============================================================
+  # SUBSYSTEM RULES
+  # ============================================================
+
+  subagent_isolation:
+    description: "Subagent (via delegate_task) HANYA menerima artifact — bukan full history"
+    rules:
+      - "Input ke subagent: HANYA artifact YAML/JSON yang relevan"
+      - "JANGAN kirim conversation history ke subagent"
+      - "JANGAN kirim memory orchestrator ke subagent"
+      - "Subagent WAJIB return artifact (tidak boleh return conversational text ke orchestrator)"
+    rationale: "Research: context pollution = cognitive overload = degraded reasoning"
+
+  long_memory_isolation:
+    description: "Long memory (CRM) TIDAK PERNAH masuk context orchestrator"
+    rules:
+      - "Long memory dibaca oleh subagent (Discovery/Router), bukan orchestrator"
+      - "Subagent baca file /data/leads/{lead_id}.yaml"
+      - "Subagent return summary ke orchestrator via artifact"
+      - "Orchestrator hanya lihat: is_returning_lead, previous_state, returning_summary"
+    rationale: "Long memory bisa besar (history panjang) — jangan polusi context"
+
+  artifact_only_handoff:
+    description: "Komunikasi antar-agent HANYA via artifact"
+    rules:
+      - "Agent A → Agent B: kirim artifact_id + artifact_type"
+      - "Agent B baca artifact dari disk: /data/artifacts/{artifact_id}.yaml"
+      - "TIDAK ADA passing full text antar agent"
+      - "Orchestrator hanya baca summary fields dari artifact"
+
+  # ============================================================
+  # CONTEXT TRIM STRATEGY
+  # ============================================================
+  trim_strategy:
+    when_to_trim:
+      - "Sebelum delegate_task ke subagent (cek context size)"
+      - "Setelah subagent return (simpan hanya summary, buang detail)"
+      - "Setiap 5 turn conversation"
+    
+    what_to_keep:
+      - "Current state + lead info (short memory structure di atas)"
+      - "Last artifact_id (untuk traceability)"
+      - "Spam score + escalate flag"
+    
+    what_to_discard:
+      - "Full conversation history"
+      - "Artifact detail (data penuh) — simpan di disk, jangan di context"
+      - "Agent reasoning/internal thoughts"
+      - "Error detail (cukup summary: 'error di agent X, retry Y')"
+
+  # ============================================================
+  # VERIFICATION CHECKPOINTS
+  # ============================================================
+  checkpoints:
+    pre_delegate:
+      - "Context size ≤ max_tokens?"
+      - "Hanya artifact yang dikirim ke subagent?"
+      - "Long memory tidak ikut?"
+    
+    post_delegate:
+      - "Subagent return artifact (bukan chat text)?"
+      - "Artifact comply ke expected schema?"
+      - "Hanya summary yang disimpan ke orchestrator context?"
+    
+    periodic:
+      - "Setiap 5 turn: full context trim"
+      - "Setiap state transition: buang detail agent sebelumnya"
