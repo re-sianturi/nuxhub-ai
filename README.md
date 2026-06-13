@@ -201,14 +201,27 @@ This system is built on peer-reviewed research and industry patterns:
 
 ---
 
+## Current Status (v1.0.0)
+
+**Foundation complete.** 28 files, 7 specialist agents + 1 orchestrator + QA loop + follow-up engine + analytics.
+
+**E2E Testing in progress:**
+- Discovery → Judge: PASS (minor issue: personality_type null saat partial)
+- Qualification → Judge: PASS (minor issue: conversation_summary missing)
+- Remaining: full pipeline (4 sample conversations), edge case tests
+
+See [TASK_PLAN.md](TASK_PLAN.md) for detailed phase status.
+
 ## Roadmap
 
-- [ ] Integration test with 4 sample conversations
-- [ ] Metrics dashboard (Google Sheets / BI connector)
-- [ ] WhatsApp / Telegram / Instagram gateway integration
-- [ ] Multi-language support (Bahasa, English, Chinese)
-- [ ] A/B testing framework for response strategies
-- [ ] Plugin integration with n8n for non-conversational tasks
+- [x] v1.0 Foundation — 7 specialist agents + orchestrator + artifact schemas
+- [x] v1.0 QA Loop — Isolated judge + fixer + circuit breaker
+- [ ] v1.1 Integration test — 4 sample conversations (E2E)
+- [ ] v1.1 Metrics dashboard — Google Sheets / BI connector
+- [ ] v1.2 Gateway — WhatsApp / Telegram / Instagram integration
+- [ ] v1.3 Multi-language — Bahasa, English, Chinese
+- [ ] v1.4 A/B testing — Response strategy framework
+- [ ] v1.5 Plugin — n8n integration for non-conversational tasks
 
 ---
 
