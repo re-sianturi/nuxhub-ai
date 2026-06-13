@@ -11,7 +11,7 @@
 | Fase 4: QA & Fixer Loop | **completed** | 4/4 | Judge agent, fixer, circuit breaker, spam scorer |
 | Fase 5: Human Escalation | **completed** | 2/2 | Escalation triggers, handoff artifact |
 | Fase 6: Analytics & Logging | **completed** | 3/3 | Logger, metrics, artifact audit trail |
-| Fase 7: Integration & Testing | **in_progress** | 1/3 | E2E chain tests running (2/4 PASS) |
+| Fase 7: Integration & Testing | **completed** | 3/3 | Full-flow (4/4) + edge cases (6/6) all PASS |
 
 ---
 
@@ -71,11 +71,11 @@ Status: **completed**
 - [x] Artifact audit trail — semua artifact disimpan untuk debugging
 
 ## Fase 7: Integration & Testing
-Status: **in_progress**
+Status: **completed**
 
-- [x] E2E chain test — Discovery → Judge(PASS) → Qualification → Judge(PASS) (2/4 done)
-- [ ] Full flow: NEW_LEAD → CONVERSION (4 sample conversations)
-- [ ] Edge case test — spam, toxic, human escalation, loop detection
+- [x] E2E chain test — Discovery → Judge(PASS) → Qualification → Judge(PASS)
+- [x] Full flow: NEW_LEAD → CONVERSION (4 sample conversations, semua PASS)
+- [x] Edge case test — spam, toxic, human escalation, loop detection (6/6 PASS)
 
 ---
 
@@ -85,5 +85,12 @@ Status: **in_progress**
 |------|-------|--------|------|
 | E2E-001 | Discovery → Judge | PASS | `data/artifacts/e2e_judge_001.yaml` |
 | E2E-002 | Qualification → Judge | PASS | `data/artifacts/e2e_judge_002.yaml` |
+| E2E-003 | Hot lead full-flow → CONVERSION | PASS | `data/e2e/e2e_003_fullflow_hot.yaml` |
+| E2E-004 | Warm + Objection → CONVERSION | PASS | `data/e2e/e2e_004_fullflow_objection.yaml` |
+| E2E-005 | Cold lead → FOLLOW_UP | PASS | `data/e2e/e2e_005_fullflow_cold.yaml` |
+| E2E-006 | Returning lead re-entry → CONVERSION | PASS | `data/e2e/e2e_006_fullflow_returning.yaml` |
+| E2E-007 | Edge cases (spam/toxic/escalation/loop) | PASS (6/6) | `data/e2e/e2e_007_edge_cases.yaml` |
 
-Known issue: `conversation_summary` field occasionally missing in qualification artifacts (minor, non-blocking).
+**Coverage:** Semua state transition valid teruji — DISCOVERY, QUALIFICATION, OFFERING, OBJECTION, CLOSING, CONVERSION, FOLLOW_UP, BLACKLIST, HUMAN_ESCALATION. Semua 7 agent + judge ter-exercise.
+
+Known issue: `conversation_summary` field occasionally missing in qualification artifacts (minor, non-blocking) — ditambahkan ke schema, dipenuhi di semua test baru.

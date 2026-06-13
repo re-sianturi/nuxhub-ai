@@ -1,5 +1,8 @@
-# Runtime data — jangan commit
-data/
+# Runtime data — jangan commit (kecuali E2E test fixtures)
+data/*
+
+# Exception: E2E test fixtures (skenario sintetis, bukan runtime lead data ber-PII)
+!data/e2e/
 
 # OS files
 .DS_Store

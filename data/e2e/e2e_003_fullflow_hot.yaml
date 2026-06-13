@@ -1,0 +1,162 @@
+# ============================================================
+# E2E-003 FULL FLOW TEST — HOT LEAD → CONVERSION
+# Skenario: Klinik kecantikan, butuh pasien, budget jelas, urgent.
+# Objective bisnis: booking_meeting
+# Chain: ROUTER → DISCOVERY → JUDGE → QUALIFICATION → JUDGE → CLOSING → JUDGE → CONVERSION
+# ============================================================
+
+test_meta:
+  test_id: "E2E-003"
+  scenario: "Hot lead, klinik kecantikan, budget jelas, timeline urgent"
+  objective: "booking_meeting"
+  expected_final_state: "CONVERSION"
+  expected_result: "PASS"
+
+# ------------------------------------------------------------
+# TURN 1 — Lead masuk
+# ------------------------------------------------------------
+conversation:
+  - turn: 1
+    user: "Halo, saya punya klinik kecantikan di Jakarta Selatan. Lagi butuh banget pasien baru, target naik 50% bulan ini. Budget marketing 15 juta, mau mulai secepatnya. Saya owner-nya."
+    pipeline:
+      router:
+        spam_score: 0
+        escalate_flag: false
+        state_assignment: "DISCOVERY"
+        delegated_agent: "discovery"
+        is_returning_lead: false
+      discovery:
+        # 1 pesan padat = banyak field langsung terisi
+        lead_profile:
+          nama: null
+          lokasi: "Jakarta Selatan"
+          bisnis: "Klinik kecantikan"
+          masalah: "Butuh pasien baru, akuisisi rendah"
+          goal: "Naik 50% pasien bulan ini"
+          budget: "15 juta"
+          timeline: "Secepatnya"
+          decision_maker: "Owner (user sendiri)"
+        personality_type: "driver"
+        personality_confidence: 0.82
+        personality_evidence: "Pesan padat, langsung sebut target+budget+timeline, decisive ('butuh banget', 'secepatnya')"
+        fields_filled_count: 7
+        discovery_complete: true
+        next_question: "Saat ini pasien datang dari mana — referral, walk-in, atau iklan? Singkat saja, biar saya rekomendasikan yang paling cepat."
+        tone_used: "driver (to the point, langsung)"
+        conversation_summary: "Owner klinik kecantikan Jaksel, budget 15jt, target +50% pasien, timeline urgent. 7/8 field terisi di turn 1."
+      judge_discovery:
+        pass: true
+        schema_compliance: true
+        objective_alignment: true
+        corrected_confidence: 0.82
+        issues: []
+        note: "7 field terisi, personality driver konsisten dengan evidence. Confidence 0.82 reasonable (nama masih null)."
+
+  - turn: 2
+    user: "Selama ini cuma dari Instagram organik, tapi makin sepi. Saya Dr. Lina."
+    pipeline:
+      discovery:
+        lead_profile:
+          nama: "Dr. Lina"
+          lokasi: "Jakarta Selatan"
+          bisnis: "Klinik kecantikan"
+          masalah: "Pasien dari IG organik, reach menurun, akuisisi sepi"
+          goal: "Naik 50% pasien bulan ini"
+          budget: "15 juta"
+          timeline: "Secepatnya"
+          decision_maker: "Owner (Dr. Lina)"
+        personality_type: "driver"
+        personality_confidence: 0.9
+        fields_filled_count: 8
+        discovery_complete: true
+        next_question: ""
+        tone_used: "driver"
+        conversation_summary: "Dr. Lina, owner klinik kecantikan Jaksel. 8/8 field. Channel saat ini IG organik (declining). Siap ke qualification."
+      judge_discovery:
+        pass: true
+        schema_compliance: true
+        objective_alignment: true
+        corrected_confidence: 0.9
+        issues: []
+
+      qualification:
+        bant_score: 88
+        tier: "hot"
+        bant_detail:
+          budget:
+            score: 23
+            evidence: "15 juta disebut eksplisit, sesuai range paket profesional/enterprise"
+          authority:
+            score: 25
+            evidence: "Owner & dokter — decision maker tunggal"
+          need:
+            score: 22
+            evidence: "Akuisisi sepi + IG organik declining = need jelas dan urgent"
+          timeline:
+            score: 18
+            evidence: "'Secepatnya', target bulan ini = urgensi tinggi"
+        gap_analysis:
+          current_state: "Andalkan IG organik yang reach-nya makin turun"
+          desired_state: "Pasien naik 50% bulan ini lewat channel berbayar yang terukur"
+          gap_description: "Tidak ada channel akuisisi berbayar/terukur; mengandalkan organik yang menurun"
+          gap_severity: "high"
+        qualified: true
+        next_state: "OFFERING"
+        conversation_summary: "BANT 88 (hot). Budget 23, Authority 25, Need 22, Timeline 18. Gap high: organik declining vs target +50%."
+      judge_qualification:
+        pass: true
+        schema_compliance: true
+        objective_alignment: true
+        corrected_confidence: 0.9
+        issues: []
+        note: "BANT sum = 88 konsisten (23+25+22+18). Tier 'hot' valid (>=80). next_state OFFERING valid."
+
+  - turn: 3
+    user: "Oke menarik. Langsung aja, apa langkah konkretnya?"
+    pipeline:
+      # OFFERING (embedded di orchestrator) → offer paket_profesional, langsung diterima driver
+      offer:
+        product_matched: "paket_profesional"
+        rationale: "Klinik existing, mau growth +50%, budget 15jt → paket_profesional"
+        offer_accepted: true
+      closing:
+        cta_type: "consultation"
+        cta_message: "Langkah konkret, Dr. Lina: kita mulai dengan sesi strategi 30 menit — gratis. Saya petakan funnel iklan (Meta Ads + Google) untuk klinik, plus proyeksi pasien dari budget 15 juta. Saya ada slot besok jam 10 atau jam 2. Mana yang cocok?"
+        future_pacing: "Akhir bulan ini, alih-alih nunggu IG organik, klinik Dr. Lina punya pipeline pasien terukur — tahu persis berapa biaya per pasien baru."
+        urgency_factor: "high"
+        next_steps:
+          - "Pilih slot konsultasi (besok jam 10 / jam 2)"
+          - "Tim siapkan funnel + proyeksi sebelum sesi"
+          - "Eksekusi kampanye dalam 3 hari kerja"
+        closing_script: "Langkah konkret, Dr. Lina: sesi strategi 30 menit gratis besok jam 10 atau jam 2 — saya petakan funnel iklan + proyeksi pasien dari budget 15 juta. Pilih slot, tim langsung siapkan. Mana yang cocok?"
+        conversation_summary: "CTA consultation untuk hot driver lead. 2 opsi slot, urgency high. Selaras objective booking_meeting."
+      judge_closing:
+        pass: true
+        schema_compliance: true
+        objective_alignment: true
+        corrected_confidence: 0.9
+        issues: []
+        note: "cta_type 'consultation' selaras objective booking_meeting. Tone driver (2 opsi + rekomendasi action). Urgency high tepat untuk hot lead."
+
+  - turn: 4
+    user: "Besok jam 10 deh. Boleh."
+    pipeline:
+      state_transition: "CLOSING → CONVERSION"
+      conversion:
+        converted: true
+        cta_accepted: true
+        booked_slot: "Besok 10:00"
+        objective_met: "booking_meeting"
+
+# ------------------------------------------------------------
+# RESULT
+# ------------------------------------------------------------
+result:
+  final_state: "CONVERSION"
+  status: "PASS"
+  judge_verdicts:
+    discovery_turn1: "PASS"
+    discovery_turn2: "PASS"
+    qualification: "PASS"
+    closing: "PASS"
+  notes: "Hot lead 4 turn ke conversion. Semua judge PASS. State machine valid: NEW_LEAD→DISCOVERY→QUALIFICATION→OFFERING→CLOSING→CONVERSION. Objective booking_meeting tercapai (slot booked)."

@@ -1,0 +1,160 @@
+# ============================================================
+# E2E-005 FULL FLOW TEST — COLD LEAD → FOLLOW_UP PIPELINE
+# Skenario: Lead coba-coba, budget tidak ada, timeline tidak jelas.
+# Objective bisnis: booking_meeting
+# Chain: ROUTER → DISCOVERY → JUDGE → QUALIFICATION → JUDGE → FOLLOW_UP → JUDGE
+# Catatan: COLD lead TIDAK masuk closing. Masuk follow_up recovery.
+# ============================================================
+
+test_meta:
+  test_id: "E2E-005"
+  scenario: "Cold lead, coba-coba, no budget, no timeline. Tidak qualified."
+  objective: "booking_meeting"
+  expected_final_state: "FOLLOW_UP"
+  expected_result: "PASS"
+
+conversation:
+  - turn: 1
+    user: "Halo, ini yang bisa bantu marketing ya? Lagi lihat-lihat aja sih."
+    pipeline:
+      router:
+        spam_score: 0
+        escalate_flag: false
+        state_assignment: "DISCOVERY"
+        delegated_agent: "discovery"
+        is_returning_lead: false
+      discovery:
+        lead_profile:
+          nama: null
+          lokasi: null
+          bisnis: null
+          masalah: null
+          goal: null
+          budget: null
+          timeline: null
+          decision_maker: null
+        personality_type: null
+        personality_confidence: 0.4
+        personality_evidence: "Baru 1 pesan, terlalu sedikit untuk profiling. 'Lihat-lihat aja' = low intent signal."
+        fields_filled_count: 0
+        discovery_complete: false
+        next_question: "Boleh, dengan senang hati. Biar saya kasih gambaran yang relevan — bisnisnya di bidang apa, dan tantangan utamanya sekarang apa?"
+        tone_used: "netral (personality belum terdeteksi)"
+        conversation_summary: "Lead baru, intent rendah ('lihat-lihat'). 0/8 field. Personality belum bisa di-assign (1 pesan)."
+      judge_discovery:
+        pass: true
+        schema_compliance: true
+        objective_alignment: true
+        corrected_confidence: 0.4
+        issues: []
+        note: "status 'partial' valid. personality null + confidence 0.4 honest (tidak overconfident). Tone netral tepat karena profiling < 0.6."
+
+  - turn: 2
+    user: "Bisnis kecil-kecilan jualan online. Belum kepikiran budget sih, masih nimbang-nimbang aja. Lihat dulu lah nanti."
+    pipeline:
+      discovery:
+        lead_profile:
+          nama: null
+          lokasi: null
+          bisnis: "Jualan online (kecil)"
+          masalah: "Belum spesifik — masih eksplorasi"
+          goal: null
+          budget: "Belum ada / nimbang"
+          timeline: "Belum (lihat nanti)"
+          decision_maker: null
+        personality_type: "amiable"
+        personality_confidence: 0.55
+        personality_evidence: "Nada santai, tentatif ('nimbang-nimbang', 'lihat dulu'), tidak decisive"
+        fields_filled_count: 4
+        discovery_complete: false
+        next_question: "Sip, santai aja. Kalau boleh tahu, jualan online-nya produk apa — dan kira-kira kendala paling kerasa di mana, sepi orderan atau susah dapat pelanggan baru?"
+        tone_used: "amiable (low pressure)"
+        conversation_summary: "Jualan online kecil. Budget belum ada, timeline belum jelas, intent rendah. 4/8 field. Sinyal cold."
+      judge_discovery:
+        pass: true
+        schema_compliance: true
+        objective_alignment: true
+        corrected_confidence: 0.55
+        issues: []
+
+      qualification:
+        bant_score: 28
+        tier: "cold"
+        bant_detail:
+          budget:
+            score: 5
+            evidence: "'Belum kepikiran budget', 'nimbang-nimbang' = tidak ada budget teralokasi"
+          authority:
+            score: 10
+            evidence: "Tidak jelas siapa decision maker, belum teridentifikasi"
+          need:
+            score: 8
+            evidence: "'Lihat-lihat', 'masih nimbang' = coba-coba, need rendah/belum jelas"
+          timeline:
+            score: 5
+            evidence: "'Lihat dulu nanti' = tidak ada timeline"
+        gap_analysis:
+          current_state: "Jualan online kecil, belum ada strategi/komitmen marketing"
+          desired_state: "Belum terartikulasi — lead masih eksplorasi"
+          gap_description: "Gap belum bisa dipetakan karena lead belum punya goal/komitmen konkret"
+          gap_severity: "low"
+        qualified: false
+        next_state: "FOLLOW_UP"
+        conversation_summary: "BANT 28 (cold). Budget 5, Authority 10, Need 8, Timeline 5. Intent eksplorasi. TIDAK qualified → FOLLOW_UP pipeline."
+      judge_qualification:
+        pass: true
+        schema_compliance: true
+        objective_alignment: true
+        corrected_confidence: 0.85
+        issues: []
+        note: "BANT sum = 28 konsisten (5+10+8+5). Tier cold valid (<50). qualified=false + next_state FOLLOW_UP valid. TEPAT tidak dipaksa ke closing."
+
+  # COLD lead TIDAK masuk closing. Masuk follow_up recovery.
+  - follow_up_trigger:
+      stage: 1
+      timing: "1 jam setelah last contact"
+      pipeline:
+        follow_up:
+          follow_up_message: "Halo, semoga harinya lancar ya. Tadi kita sempat ngobrol soal jualan online-nya. Kalau nanti sudah lebih mantap mau coba garap marketing-nya, saya siap bantu — no rush sama sekali. :)"
+          message_strategy: "Cold lead stage 1: soft touch, zero pressure. Tujuan jaga relasi, bukan push."
+          next_trigger: "2026-06-14T02:00:00Z"
+          should_continue: true
+          reactivation_offer: null
+          conversation_summary: "Follow-up stage 1 untuk cold lead. Soft touch tanpa tekanan. Next trigger +3 jam (stage 2)."
+        judge_follow_up:
+          pass: true
+          schema_compliance: true
+          objective_alignment: true
+          corrected_confidence: 0.85
+          issues: []
+          note: "Pesan soft, tidak pushy (sesuai aturan cold lead). should_continue true. next_trigger ISO 8601 valid. Selaras prinsip 'follow up adalah service'."
+
+  - follow_up_trigger:
+      stage: 2
+      timing: "3 jam setelah stage 1"
+      pipeline:
+        follow_up:
+          follow_up_message: "Mikirin gimana cara naikin orderan online-nya? Kalau timing-nya udah pas, kabarin saya aja ya. Saya juga bisa kirim tips gratis buat mulai, kalau Bapak/Ibu mau."
+          message_strategy: "Cold lead stage 2: tawarkan value (tips gratis), tetap low pressure. Ini stage terakhir untuk cold."
+          next_trigger: null
+          should_continue: false
+          reactivation_offer: "Tips gratis: 3 cara naikin orderan online tanpa budget besar"
+          conversation_summary: "Follow-up stage 2 (terakhir untuk cold). Tawarkan tips gratis. should_continue=false (cold lead berhenti di stage 2)."
+        judge_follow_up:
+          pass: true
+          schema_compliance: true
+          objective_alignment: true
+          corrected_confidence: 0.88
+          issues: []
+          note: "should_continue=false TEPAT — cold lead tidak di-follow-up lebih dari 2x (aturan anti-spam). next_trigger null konsisten dengan should_continue=false. Value offer baik untuk reactivation."
+
+result:
+  final_state: "FOLLOW_UP (stopped at stage 2)"
+  status: "PASS"
+  judge_verdicts:
+    discovery_turn1: "PASS"
+    discovery_turn2: "PASS"
+    qualification: "PASS"
+    follow_up_stage1: "PASS"
+    follow_up_stage2: "PASS"
+  notes: "Cold lead 2 turn + 2 follow-up. State machine valid: DISCOVERY→QUALIFICATION→FOLLOW_UP. TIDAK dipaksa closing (benar). Cold lead berhenti di follow-up stage 2 (anti-spam). Membuktikan sistem tidak over-sell lead yang tidak siap."

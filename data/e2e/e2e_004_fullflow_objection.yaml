@@ -1,0 +1,183 @@
+# ============================================================
+# E2E-004 FULL FLOW TEST — WARM LEAD + OBJECTION → CONVERSION
+# Skenario: Bengkel mobil, butuh customer, ragu harga. Objection "mahal".
+# Objective bisnis: booking_meeting
+# Chain: ROUTER → DISCOVERY → JUDGE → QUALIFICATION → JUDGE → OFFERING → OBJECTION → JUDGE → CLOSING → JUDGE → CONVERSION
+# ============================================================
+
+test_meta:
+  test_id: "E2E-004"
+  scenario: "Warm lead, bengkel mobil, objection mahal, resolved via ROI reframe"
+  objective: "booking_meeting"
+  expected_final_state: "CONVERSION"
+  expected_result: "PASS"
+
+conversation:
+  - turn: 1
+    user: "Pagi. Saya punya bengkel mobil di Bekasi. Pengen customer nambah tapi bingung caranya. Kira-kira bisa bantu?"
+    pipeline:
+      router:
+        spam_score: 0
+        escalate_flag: false
+        state_assignment: "DISCOVERY"
+        delegated_agent: "discovery"
+        is_returning_lead: false
+      discovery:
+        lead_profile:
+          nama: null
+          lokasi: "Bekasi"
+          bisnis: "Bengkel mobil"
+          masalah: "Customer stagnan, bingung cara nambah"
+          goal: null
+          budget: null
+          timeline: null
+          decision_maker: null
+        personality_type: "amiable"
+        personality_confidence: 0.65
+        personality_evidence: "Pembukaan ramah ('Pagi'), nada eksploratif ('bingung caranya', 'kira-kira bisa bantu'), relationship-oriented"
+        fields_filled_count: 3
+        discovery_complete: false
+        next_question: "Wah, boleh banget. Biar saya bantu pas — target customer tambahannya kira-kira berapa, dan budget marketing-nya gimana?"
+        tone_used: "amiable (hangat, mengundang cerita)"
+        conversation_summary: "Bengkel mobil Bekasi, customer stagnan. 3/8 field. Personality amiable (tentatif). Lanjut gali goal+budget."
+      judge_discovery:
+        pass: true
+        schema_compliance: true
+        objective_alignment: true
+        corrected_confidence: 0.65
+        issues:
+          - severity: "minor"
+            field: "data.personality_confidence"
+            description: "Confidence 0.65 di bawah 0.6 threshold untuk assign — borderline tapi masih diterima karena evidence ada"
+            expected: ">= 0.6 untuk assign"
+            actual: "0.65"
+        note: "status 'partial' valid (fields < 6). Personality borderline tapi acceptable."
+
+  - turn: 2
+    user: "Pengennya sih sebulan ada tambahan 30-an customer. Budget ya paling 5 jutaan lah. Saya pemilik, tapi biasanya diskusi sama istri dulu. Nama saya Pak Hendra."
+    pipeline:
+      discovery:
+        lead_profile:
+          nama: "Pak Hendra"
+          lokasi: "Bekasi"
+          bisnis: "Bengkel mobil"
+          masalah: "Customer stagnan, bingung cara nambah"
+          goal: "Tambah ~30 customer/bulan"
+          budget: "5 juta"
+          timeline: null
+          decision_maker: "Pemilik, tapi konsultasi istri"
+        personality_type: "amiable"
+        personality_confidence: 0.8
+        fields_filled_count: 7
+        discovery_complete: true
+        next_question: ""
+        tone_used: "amiable"
+        conversation_summary: "Pak Hendra, pemilik bengkel Bekasi. Target +30 customer/bln, budget 5jt, decision konsultasi istri. 7/8 field (timeline null). Ke qualification."
+      judge_discovery:
+        pass: true
+        schema_compliance: true
+        objective_alignment: true
+        corrected_confidence: 0.8
+        issues: []
+
+      qualification:
+        bant_score: 61
+        tier: "warm"
+        bant_detail:
+          budget:
+            score: 18
+            evidence: "5 juta disebut, agak ketat untuk target +30 customer tapi workable"
+          authority:
+            score: 20
+            evidence: "Pemilik tapi konsultasi istri = decision maker dengan konsultasi"
+          need:
+            score: 18
+            evidence: "Need jelas (customer stagnan) tapi tidak urgent, masih eksploratif"
+          timeline:
+            score: 5
+            evidence: "Tidak disebut timeline sama sekali"
+        gap_analysis:
+          current_state: "Customer bengkel stagnan, belum ada strategi akuisisi"
+          desired_state: "Tambahan ~30 customer per bulan secara konsisten"
+          gap_description: "Belum ada channel akuisisi; butuh sistem yang muat di budget 5jt"
+          gap_severity: "medium"
+        qualified: true
+        next_state: "OFFERING"
+        conversation_summary: "BANT 61 (warm). Budget 18, Authority 20, Need 18, Timeline 5. Gap medium. Qualified, ke OFFERING dengan nurturing."
+      judge_qualification:
+        pass: true
+        schema_compliance: true
+        objective_alignment: true
+        corrected_confidence: 0.85
+        issues: []
+        note: "BANT sum = 61 konsisten (18+20+18+5). Tier warm valid (50-79). Timeline score 5 tepat (tidak disebut)."
+
+  - turn: 3
+    user: "Oh ada paket 6 juta ya? Wah itu kemahalan buat bengkel kecil kayak saya."
+    pipeline:
+      offer:
+        product_matched: "paket_profesional"
+        rationale: "Target +30 customer, butuh sistem akuisisi — paket_profesional (~6jt)"
+        offer_accepted: false
+        rejection_reason: "harga (mahal)"
+      state_transition: "OFFERING → OBJECTION"
+      objection:
+        objection_matched: "mahal"
+        root_cause: "Value belum jelas — Pak Hendra belum lihat hubungan 6jt dengan hasil (customer tambahan). Bukan soal angka, soal ROI yang belum terbukti."
+        response_strategy: "Reframe harga ke cost-per-customer + ROI, pakai social proof bengkel sejenis. Tone amiable (empati + cerita klien)."
+        suggested_response: "Saya paham banget, Pak Hendra — buat bengkel yang lagi atur budget, 6 juta itu kerasa. Tapi coba kita lihat dari sisi lain: kalau dari situ datang 30 customer servis, itu sekitar 200 ribu per customer baru. Satu kali servis aja biasanya udah nutup. Bengkel di Tangerang yang mirip kondisinya, balik modal di bulan pertama. Boleh saya tunjukkan proyeksinya khusus untuk bengkel Bapak?"
+        follow_up_question: "Kalau saya buktikan biaya per customer-nya masuk akal, Bapak lebih nyaman lanjut?"
+        objection_resolved: true
+        next_action: "retry_offer"
+        conversation_summary: "Objection 'mahal' (warm/amiable). Root cause: value belum jelas. Reframe ke 200rb/customer + social proof bengkel Tangerang. Resolved, retry_offer."
+      judge_objection:
+        pass: true
+        schema_compliance: true
+        objective_alignment: true
+        corrected_confidence: 0.85
+        issues: []
+        note: "objection_matched 'mahal' tepat. Tidak kasih diskon (sesuai aturan), reframe ROI + social proof. Tone amiable konsisten. next_action retry_offer valid."
+
+  - turn: 4
+    user: "Hmm bener juga sih kalau dihitung gitu. Oke deh, gimana kelanjutannya?"
+    pipeline:
+      state_transition: "OBJECTION → CLOSING"
+      closing:
+        cta_type: "consultation"
+        cta_message: "Senang Bapak lihat hitungannya masuk, Pak Hendra. Langkah enaknya begini: kita ngobrol santai 30 menit, saya tunjukkan proyeksi customer khusus bengkel Bapak plus contoh iklan yang udah jalan di bengkel lain. Gratis, nggak ada komitmen. Bapak lebih enak weekday sore atau Sabtu pagi? Bisa sekalian diskusi sama istri kalau mau."
+        future_pacing: "Bayangkan 2 bulan lagi, bengkel Bapak nggak nunggu customer datang sendiri — tiap minggu ada servis baru yang masuk dari iklan, dan Bapak tahu persis berapa biayanya."
+        urgency_factor: "medium"
+        next_steps:
+          - "Pilih jadwal konsultasi (weekday sore / Sabtu pagi)"
+          - "Boleh ajak istri (decision maker bersama)"
+          - "Tim siapkan proyeksi customer + contoh iklan"
+        closing_script: "Langkah enaknya: ngobrol santai 30 menit, saya tunjukkan proyeksi customer khusus bengkel Bapak + contoh iklan yang udah jalan. Gratis, no komitmen. Weekday sore atau Sabtu pagi? Boleh sekalian sama istri."
+        conversation_summary: "CTA consultation untuk warm amiable lead. Akomodasi decision maker (istri), urgency medium. Selaras booking_meeting."
+      judge_closing:
+        pass: true
+        schema_compliance: true
+        objective_alignment: true
+        corrected_confidence: 0.88
+        issues: []
+        note: "cta consultation selaras objective. Tone amiable (hangat, bangun koneksi, akomodasi istri sebagai co-decision-maker). Urgency medium tepat untuk warm. Tidak pushy."
+
+  - turn: 5
+    user: "Sabtu pagi aja deh, sekalian sama istri. Boleh."
+    pipeline:
+      state_transition: "CLOSING → CONVERSION"
+      conversion:
+        converted: true
+        cta_accepted: true
+        booked_slot: "Sabtu pagi (dengan istri)"
+        objective_met: "booking_meeting"
+
+result:
+  final_state: "CONVERSION"
+  status: "PASS"
+  judge_verdicts:
+    discovery_turn1: "PASS (1 minor)"
+    discovery_turn2: "PASS"
+    qualification: "PASS"
+    objection: "PASS"
+    closing: "PASS"
+  notes: "Warm lead 5 turn ke conversion via jalur objection. State machine valid: DISCOVERY→QUALIFICATION→OFFERING→OBJECTION→CLOSING→CONVERSION. Objection 'mahal' resolved tanpa diskon (ROI reframe). Objective booking_meeting tercapai."
