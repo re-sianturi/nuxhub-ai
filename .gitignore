@@ -1,35 +1,15 @@
-# Hermes-specific
-.planning/
-.env
-*.env
-.env.local
+# Runtime data — jangan commit
+data/
 
-# Runtime
-__pycache__/
-*.pyc
-*.pyo
-*.egg-info/
-*.log
-*.jsonl
-node_modules/
-
-# OS
+# OS files
 .DS_Store
 Thumbs.db
 
 # IDE
 .vscode/
 .idea/
-*.swp
 
-# Data
-/data/leads/*.yaml
-/data/leads/*.json
-/logs/*.jsonl
-/logs/*.log
-
-# Security
-*.pem
-*.key
-*.crt
-*.cert
+# Python
+__pycache__/
+*.pyc
+.venv/
