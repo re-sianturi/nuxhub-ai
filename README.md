@@ -176,7 +176,9 @@ The orchestrator will route through the pipeline: Spam Gate → Router → Disco
 | [README.md](agents/router/README.md) | Indonesian | Router Agent — panduan bisnis |
 | [README_CN.md](agents/router/README_CN.md) | Chinese (Mandarin) | 路由代理 — 商业成果指南 |
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | English | 14-layer architecture reference |
+| [TESTING.md](docs/TESTING.md) | English | Testing methodology — design vs live-run verification |
 | [RESEARCH.md](docs/RESEARCH.md) | English | Multi-agent research findings |
+| [CHANGELOG.md](CHANGELOG.md) | English | Version history |
 
 ---
 
@@ -203,25 +205,46 @@ This system is built on peer-reviewed research and industry patterns:
 
 ## Current Status (v1.0.0)
 
-**Foundation complete.** 28 files, 7 specialist agents + 1 orchestrator + QA loop + follow-up engine + analytics.
+**All 8 build phases complete — design-verified foundation.** 28 source files + 7 E2E fixtures: 7 specialist agents + 1 orchestrator + QA loop + follow-up engine + analytics.
 
-**E2E Testing in progress:**
-- Discovery → Judge: PASS (minor issue: personality_type null saat partial)
-- Qualification → Judge: PASS (minor issue: conversation_summary missing)
-- Remaining: full pipeline (4 sample conversations), edge case tests
+**E2E verification — 7/7 PASS** (see [docs/TESTING.md](docs/TESTING.md) for methodology):
 
-See [TASK_PLAN.md](TASK_PLAN.md) for detailed phase status.
+| Test | Scenario | Result |
+|---|---|---|
+| E2E-001 | Discovery → Judge | PASS |
+| E2E-002 | Qualification → Judge | PASS |
+| E2E-003 | Hot lead → CONVERSION | PASS |
+| E2E-004 | Warm + objection "mahal" → CONVERSION | PASS |
+| E2E-005 | Cold lead → FOLLOW_UP (stops at stage 2) | PASS |
+| E2E-006 | Returning lead re-entry → CONVERSION | PASS |
+| E2E-007 | Edge cases (scam/toxic/escalation/loop) | PASS 6/6 |
+
+> **What "PASS" means here:** these are **by-design logical verifications** — hand-authored scenarios checked against each agent's SKILL.md rules and the state machine. They prove the pipeline is *coherent* (valid transitions, consistent judge rules, no dead-ends). They are **not** live model runs. Live-run validation (real inference filling artifacts, race conditions, cost-per-lead) is tracked under "Production Readiness" below.
+
+See [TASK_PLAN.md](TASK_PLAN.md) for phase-by-phase status and [HANDOFF.md](HANDOFF.md) for the resume guide.
 
 ## Roadmap
 
-- [x] v1.0 Foundation — 7 specialist agents + orchestrator + artifact schemas
-- [x] v1.0 QA Loop — Isolated judge + fixer + circuit breaker
-- [ ] v1.1 Integration test — 4 sample conversations (E2E)
-- [ ] v1.1 Metrics dashboard — Google Sheets / BI connector
-- [ ] v1.2 Gateway — WhatsApp / Telegram / Instagram integration
-- [ ] v1.3 Multi-language — Bahasa, English, Chinese
-- [ ] v1.4 A/B testing — Response strategy framework
-- [ ] v1.5 Plugin — n8n integration for non-conversational tasks
+**v1.0 — Foundation (complete)**
+- [x] 7 specialist agents + orchestrator + artifact schemas
+- [x] Isolated judge + fixer + circuit breaker (QA loop)
+- [x] Human escalation triggers + handoff artifact
+- [x] Analytics: 22 events + 12 metrics + audit trail
+- [x] E2E design-verification — 7/7 PASS (full-flow 4/4 + edge cases 6/6)
+
+**Production Readiness (not started — outside v1.0 scope)**
+- [ ] Live-run validation — real inference filling artifacts end-to-end
+- [ ] State persistence — file-based → SQLite/DB with locking (race-condition guard)
+- [ ] Human escalation — real notification (Telegram/Slack webhook) + context handoff
+- [ ] Gateway — Telegram bot (MVP), then WhatsApp Business API
+- [ ] Cost tracking + rate limiting (~7-10 agent calls per lead)
+- [ ] Metrics dashboard + log aggregation
+- [ ] Replace `shared/products.yaml` template with real business products
+
+**Future**
+- [ ] Multi-language — Bahasa, English, Chinese
+- [ ] A/B testing — response strategy framework
+- [ ] n8n plugin — non-conversational task integration
 
 ---
 
